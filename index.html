@@ -1,0 +1,817 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#16242B"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png" type="image/png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Last Stick"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style><title>Last Stick</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: two tabs. Calculator has inputs left, results right; Quit streak has the live timer left, savings and recovery right. Both stack on phones. The hero is a cigarette that burns down: filter = years lived, paper = years left, ember = projected end, ash = years lost. */
+:root {
+  --bg: #E8EDEF;
+  --surface: #F6F8F8;
+  --ink: #16242B;
+  --muted: #55666E;
+  --line: #C6D1D5;
+  --ember: #D4401C;
+  --filter: #C79E62;
+  --paper: #FFFFFF;
+  --ash: #8D9BA1;
+  --nic: #9A5B0C;
+  --tar: #6A4630;
+  --co: #345F7E;
+  --good: #1F7A52;
+  --field: #FFFFFF;
+  --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10181C; --surface: #19242A; --ink: #E6EEF0; --muted: #94A6AD; --line: #2B3A41;
+    --ember: #FF6B45; --filter: #C79E62; --paper: #D7DFE2; --ash: #5E6E75;
+    --nic: #E0A04A; --tar: #C79A7C; --co: #7FB2D4; --good: #52C592; --field: #101A1F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10181C; --surface: #19242A; --ink: #E6EEF0; --muted: #94A6AD; --line: #2B3A41;
+  --ember: #FF6B45; --filter: #C79E62; --paper: #D7DFE2; --ash: #5E6E75;
+  --nic: #E0A04A; --tar: #C79A7C; --co: #7FB2D4; --good: #52C592; --field: #101A1F;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 22px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+header h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(44px, 9vw, 72px);
+  line-height: 0.95; letter-spacing: 0.01em; text-transform: uppercase; margin: 0 0 8px;
+}
+header p { margin: 0; max-width: 56ch; color: var(--muted); font-size: 16px; }
+
+.tabs { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; width: fit-content; max-width: 100%; background: var(--surface); }
+.tabs button { font: inherit; font-weight: 600; font-size: 14px; padding: 10px 20px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.tabs button + button { border-left: 1px solid var(--line); }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+
+.cols { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 880px) { .cols { grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 28px; } }
+.stack { display: grid; gap: 20px; min-width: 0; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+.panel h2 {
+  font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.04em;
+  text-transform: uppercase; margin: 0 0 14px;
+}
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+label, .lbl { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+input[type="number"], input[type="datetime-local"], select {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--field);
+  border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; width: 100%; min-width: 0;
+}
+input[type="number"] { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--field); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label {
+  text-align: center; padding: 9px 4px; cursor: pointer; text-transform: none; letter-spacing: 0;
+  font-size: 13.5px; font-weight: 500; color: var(--ink); border-left: 1px solid var(--line);
+}
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--ink); color: var(--bg); }
+.seg input:focus-visible + label { outline: 2px solid var(--ember); outline-offset: -3px; }
+
+.example { font-size: 12.5px; margin: 0 0 12px; padding: 7px 10px; border-radius: 6px; background: color-mix(in srgb, var(--filter) 22%, var(--surface)); border: 1px dashed var(--filter); }
+.rows { display: grid; gap: 10px; }
+.row { display: grid; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; padding-bottom: 0; }
+.row-main { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.stepper { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--field); }
+.stepper button { width: 36px; border: 0; background: transparent; color: var(--ink); font-size: 20px; cursor: pointer; }
+.stepper button:hover { background: var(--line); }
+.stepper input { width: 52px; border: 0; border-radius: 0; text-align: center; padding: 9px 2px; -moz-appearance: textfield; }
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.x { border: 0; background: transparent; color: var(--muted); font-size: 22px; line-height: 1; width: 32px; height: 38px; cursor: pointer; border-radius: 6px; }
+.x:hover { color: var(--ember); }
+.custom { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.custom .field label { font-size: 11px; }
+.btn-add {
+  margin-top: 12px; width: 100%; font: inherit; font-weight: 600; font-size: 14px; padding: 10px;
+  background: transparent; color: var(--ink); border: 1px dashed var(--ash); border-radius: 6px; cursor: pointer;
+}
+.btn-add:hover { border-style: solid; background: var(--field); }
+
+.btn { font: inherit; font-weight: 600; font-size: 15px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--field); color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--ink); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.primary { background: var(--good); border-color: var(--good); color: #fff; width: 100%; font-size: 16px; }
+:root[data-theme="dark"] .btn.primary { color: #08140E; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #08140E; } }
+.btn.warn { border-color: var(--ember); color: var(--ember); }
+.btn.small { font-size: 13px; padding: 8px 12px; font-weight: 500; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Results */
+.hero { padding: 22px 20px 20px; }
+.hero .kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.hero h2.big {
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(38px, 7.5vw, 58px); line-height: 1;
+  letter-spacing: 0.01em; text-transform: none; margin: 0 0 6px; text-wrap: balance;
+}
+.hero h2.big .lost { color: var(--ember); }
+.hero .sub { margin: 0 0 20px; color: var(--muted); max-width: 60ch; }
+
+.cig { display: flex; height: 40px; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); background: var(--paper); }
+.cig > div { height: 100%; min-width: 0; }
+.cig .filter { background: repeating-linear-gradient(90deg, var(--filter) 0 3px, color-mix(in srgb, var(--filter) 78%, #000) 3px 5px); }
+.cig .paper { background: var(--paper); }
+.cig .ember { flex: 0 0 9px; background: linear-gradient(90deg, #FFB347, var(--ember) 55%, #7A1F0A); box-shadow: 0 0 10px var(--ember); position: relative; z-index: 1; }
+.cig .ash { background: repeating-linear-gradient(135deg, var(--ash) 0 4px, color-mix(in srgb, var(--ash) 70%, var(--bg)) 4px 8px); opacity: 0.85; }
+.scale { display: flex; justify-content: space-between; font-family: var(--font-data); font-size: 12px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 16px; margin: 16px 0 0; padding: 0; list-style: none; }
+.legend li { display: grid; grid-template-columns: 14px 1fr; gap: 2px 8px; align-items: baseline; }
+.legend i { width: 14px; height: 14px; border-radius: 3px; display: block; transform: translateY(2px); }
+.legend .v { font-family: var(--font-data); font-size: 15px; font-variant-numeric: tabular-nums; }
+.legend .n { grid-column: 2; font-size: 12.5px; color: var(--muted); }
+
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.metric { border-top: 4px solid var(--c); padding-top: 10px; min-width: 0; }
+.metric .name { font-size: 12px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.metric .num { font-family: var(--font-display); font-weight: 800; font-size: 44px; line-height: 1.05; color: var(--c); font-variant-numeric: tabular-nums; }
+.metric .num small { font-family: var(--font-data); font-weight: 500; font-size: 13px; color: var(--muted); margin-left: 4px; }
+.metric .year { font-family: var(--font-data); font-size: 13px; font-variant-numeric: tabular-nums; }
+.metric p { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+.metrics.sm { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.metrics.sm .metric .num { font-size: 36px; }
+
+.tablewrap { overflow-x: auto; margin-top: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 420px; }
+th { text-align: left; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 8px; border-bottom: 1px solid var(--line); }
+th.r, td.r { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+tfoot td { font-weight: 600; border-bottom: 0; }
+
+.quit { display: grid; gap: 14px; }
+.qrow { display: grid; gap: 6px; }
+.qrow .head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.qrow .head b { font-family: var(--font-data); font-weight: 500; font-variant-numeric: tabular-nums; }
+.track { height: 14px; border-radius: 999px; background: var(--line); position: relative; overflow: hidden; }
+.track > span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+.gain { margin: 0; padding: 12px 14px; border-radius: 8px; background: color-mix(in srgb, var(--good) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--good) 45%, var(--line)); }
+.gain strong { color: var(--good); font-family: var(--font-display); font-size: 26px; font-weight: 800; letter-spacing: 0.02em; }
+
+.costs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 14px; margin: 0; }
+.costs div { min-width: 0; }
+.costs dt { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.costs dd { margin: 2px 0 0; font-family: var(--font-data); font-size: 18px; font-variant-numeric: tabular-nums; }
+
+.notes h2 { margin-bottom: 8px; }
+.notes ul { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; color: var(--muted); }
+.notes a { color: var(--ink); }
+.help { margin: 0; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--field); font-size: 14px; }
+.help b { font-family: var(--font-data); font-weight: 500; user-select: all; }
+.msg { font-size: 13px; color: var(--ember); margin: 8px 0 0; }
+
+/* Streak */
+.streak .kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.units { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+.unit { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 10px 2px 8px; text-align: center; }
+.unit b { display: block; font-family: var(--font-display); font-weight: 800; font-size: clamp(34px, 8vw, 50px); line-height: 1; font-variant-numeric: tabular-nums; color: var(--good); }
+.unit span { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.streak .since { margin: 0 0 14px; color: var(--muted); font-size: 13.5px; }
+.nextms { margin: 0 0 16px; display: grid; gap: 6px; font-size: 14px; }
+.nextms .track > span { background: var(--good); }
+.recap { margin: 0 0 14px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--field); font-size: 14px; }
+details.back { margin: 0 0 14px; }
+details.back summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+details.back .field { margin-top: 10px; }
+.confirm { display: grid; gap: 10px; margin-top: 12px; padding: 12px; border: 1px solid var(--ember); border-radius: 8px; font-size: 14px; }
+.rec { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
+.rec dt { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.rec dd { margin: 2px 0 0; font-family: var(--font-data); font-size: 16px; }
+.basenote { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+.ms { list-style: none; margin: 0; padding: 0; }
+.ms li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 4px 12px; padding: 11px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.ms li:last-child { border-bottom: 0; }
+.ms .t { font-family: var(--font-data); font-size: 13px; }
+.ms .pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; color: var(--muted); }
+.ms li.done .pill { background: color-mix(in srgb, var(--good) 16%, var(--surface)); border-color: var(--good); color: var(--good); }
+.ms li.next .pill { border-color: var(--ember); color: var(--ember); }
+.ms li.done .t { color: var(--good); }
+@media (max-width: 480px) { .ms li { grid-template-columns: minmax(0, 1fr) auto; } .ms .t { grid-column: 1 / -1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .cig > div { transition: flex-basis 0.35s ease, width 0.35s ease; }
+  .track > span { transition: width 0.35s ease; }
+}
+</style></head><body>
+
+<div class="wrap">
+  <header>
+    <h1>Last Stick</h1>
+    <p>Count the cigarettes you smoke in a day, see what they cost your body, then keep a streak of days without them.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" id="tab-calc" aria-controls="view-calc" aria-selected="true">Calculator</button>
+    <button type="button" role="tab" id="tab-streak" aria-controls="view-streak" aria-selected="false">Quit streak</button>
+  </nav>
+
+  <div class="cols" id="view-calc" role="tabpanel" aria-labelledby="tab-calc">
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-you">
+        <h2 id="h-you">About you</h2>
+        <div class="fields">
+          <div class="field"><label for="age">Your age</label><input id="age" type="number" inputmode="numeric" min="14" max="100" value="30"></div>
+          <div class="field"><label for="start">Started smoking at</label><input id="start" type="number" inputmode="numeric" min="8" max="100" value="18"></div>
+          <div class="field"><label for="sex">Sex</label>
+            <select id="sex"><option value="male">Male</option><option value="female">Female</option><option value="avg">Prefer not to say</option></select>
+          </div>
+          <div class="field"><label for="life">Average life span</label><input id="life" type="number" inputmode="numeric" min="40" max="110" value="71"></div>
+          <div class="field wide"><label for="price">Price per cigarette (₹)</label><input id="price" type="number" inputmode="decimal" min="0" step="0.5" value="15"></div>
+          <div class="field wide">
+            <span class="lbl" id="depth-l">How deeply you inhale</span>
+            <div class="seg" role="radiogroup" aria-labelledby="depth-l">
+              <input type="radio" name="depth" id="d1" value="1"><label for="d1">Light</label>
+              <input type="radio" name="depth" id="d2" value="1.5" checked><label for="d2">Typical</label>
+              <input type="radio" name="depth" id="d3" value="2.2"><label for="d3">Deep</label>
+            </div>
+            <p class="hint">Pack figures come from lab machines and people draw harder. Light, typical and deep take in 1.0×, 1.5× and 2.2× the pack figures, and shift the life lost per cigarette to 0.8×, 1× and 1.25×.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-day">
+        <h2 id="h-day">Cigarettes in one day</h2>
+        <p class="example" id="example">Example day. Change the brands and counts to match yours.</p>
+        <div class="rows" id="rows"></div>
+        <button type="button" class="btn-add" id="add">+ Add another brand</button>
+      </section>
+    </div>
+
+    <div class="stack" id="results" aria-live="polite">
+      <section class="panel hero" aria-labelledby="headline">
+        <p class="kicker">If you keep smoking at this rate</p>
+        <h2 class="big" id="headline"></h2>
+        <p class="sub" id="sub"></p>
+        <div class="cig" id="cig" role="img" aria-label="Life as a burning cigarette">
+          <div class="filter" id="b-filter"></div><div class="paper" id="b-paper"></div><div class="ember"></div><div class="ash" id="b-ash"></div>
+        </div>
+        <div class="scale"><span>0</span><span id="sc-now"></span><span id="sc-end"></span><span id="sc-base"></span></div>
+        <ul class="legend" id="legend"></ul>
+        <p class="msg" id="msg" hidden></p>
+      </section>
+
+      <section class="panel" aria-labelledby="h-in">
+        <h2 id="h-in">What goes in, per day</h2>
+        <p class="hint" id="depth-note" style="margin:-6px 0 14px"></p>
+        <div class="metrics" id="metrics"></div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Brand</th><th class="r">Sticks</th><th class="r">Nicotine mg</th><th class="r">Tar mg</th><th class="r">CO mg</th></tr></thead>
+          <tbody id="tbody"></tbody><tfoot id="tfoot"></tfoot>
+        </table></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-q">
+        <h2 id="h-q">If you quit today</h2>
+        <div class="quit" id="quit"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-c">
+        <h2 id="h-c">What it costs</h2>
+        <dl class="costs" id="costs"></dl>
+      </section>
+
+      <section class="panel notes" aria-labelledby="h-n">
+        <h2 id="h-n">How this is worked out</h2>
+        <ul>
+          <li>Each cigarette is taken to cost about 20 minutes of life at typical inhalation, the average from a 2024 study in the journal Addiction (<a href="https://euronews.com/health/2025/01/08/smoking-a-single-cigarette-can-decrease-your-life-expectancy-by-20-minutes" target="_blank" rel="noopener">news coverage</a>). Light and deep inhalation scale that by 0.8× and 1.25×, which is a rough adjustment of mine. Life lost is capped at 15 years because an average stops being reliable at very heavy use.</li>
+          <li>The projection assumes you smoked today's amount every day since you started and keep going. Real outcomes vary a lot with genes, diet, and other health factors.</li>
+          <li>Nicotine, tar and carbon monoxide per stick are typical machine-rated values for each type, not measurements of your pack. If your pack lists its own figures, pick "Other" and enter them.</li>
+          <li>This is an estimate to help you decide, not medical advice.</li>
+        </ul>
+        <p class="help">Ready to stop? India's National Tobacco Quitline is free: <b>1800-11-2356</b>. <a href="https://ntqls.in/online-support.php" target="_blank" rel="noopener">Online support</a></p>
+      </section>
+    </div>
+  </div>
+
+  <div class="cols" id="view-streak" role="tabpanel" aria-labelledby="tab-streak" hidden>
+    <div class="stack">
+      <section class="panel streak" aria-labelledby="h-streak">
+        <h2 id="h-streak">Smoke-free streak</h2>
+
+        <div id="s-off">
+          <p class="recap" id="s-last" hidden></p>
+          <p class="kicker">No streak running</p>
+          <details class="back">
+            <summary>Already quit earlier? Set the start time</summary>
+            <div class="field"><label for="since">Last cigarette</label><input id="since" type="datetime-local"></div>
+          </details>
+          <button type="button" class="btn primary" id="s-start">Start my streak</button>
+          <p class="basenote" id="s-base-off"></p>
+        </div>
+
+        <div id="s-on" hidden>
+          <p class="kicker">Smoke-free for</p>
+          <div class="units" role="timer" aria-label="Time since your last cigarette">
+            <div class="unit"><b id="u-d">0</b><span>days</span></div>
+            <div class="unit"><b id="u-h">00</b><span>hours</span></div>
+            <div class="unit"><b id="u-m">00</b><span>min</span></div>
+            <div class="unit"><b id="u-s">00</b><span>sec</span></div>
+          </div>
+          <p class="since" id="s-since"></p>
+          <div class="nextms" id="s-next"></div>
+          <div class="actions">
+            <button type="button" class="btn warn" id="s-slip">I smoked</button>
+          </div>
+          <div class="confirm" id="s-confirm" hidden>
+            <span>This ends your streak and starts the count from zero. Your longest streak stays saved.</span>
+            <div class="actions">
+              <button type="button" class="btn warn small" id="s-yes">Yes, end my streak</button>
+              <button type="button" class="btn small" id="s-no">Keep going</button>
+            </div>
+          </div>
+          <p class="basenote" id="s-base-on"></p>
+          <button type="button" class="btn small" id="s-rebase" style="margin-top:8px">Update from calculator</button>
+        </div>
+
+        <dl class="rec">
+          <div><dt>Longest streak</dt><dd id="r-best">0 min</dd></div>
+          <div><dt>Slips</dt><dd id="r-slips">0</dd></div>
+        </dl>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-kept">
+        <h2 id="h-kept">What you have kept</h2>
+        <div id="s-stats"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-proj">
+        <h2 id="h-proj">Staying on track</h2>
+        <p class="hint" style="margin:-6px 0 4px">What you keep if you stay smoke-free, based on your day in the calculator.</p>
+        <div class="tablewrap"><table id="s-proj"></table></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-body">
+        <h2 id="h-body">Your body, step by step</h2>
+        <ul class="ms" id="s-ms"></ul>
+        <p class="hint" style="margin-top:10px">Commonly cited recovery timelines from public health agencies. Individual recovery varies.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+/*LOGIC*/
+var MIN_PER_CIG = 20, MAX_LOSS_YEARS = 15, MIN_PER_YEAR = 525600, DAY_MS = 86400000;
+var BRANDS = [
+  { id: 'classic-connect', name: 'Classic Connect (capsule)', tar: 10, nic: 0.8, co: 10 },
+  { id: 'classic-regular', name: 'Classic Regular', tar: 14, nic: 1.0, co: 12 },
+  { id: 'marlboro-compact', name: 'Marlboro Compact', tar: 8, nic: 0.7, co: 8 },
+  { id: 'marlboro-advance', name: 'Marlboro Advance', tar: 7, nic: 0.6, co: 7 },
+  { id: 'marlboro-double-burst', name: 'Marlboro Double Burst', tar: 8, nic: 0.7, co: 8 },
+  { id: 'finetouch', name: 'Fine Touch', tar: 6, nic: 0.5, co: 6 },
+  { id: 'gold-flake-kings', name: 'Gold Flake Kings', tar: 14, nic: 1.0, co: 12 },
+  { id: 'wills-navy-cut', name: 'Wills Navy Cut', tar: 16, nic: 1.2, co: 13 },
+  { id: 'four-square', name: 'Four Square', tar: 14, nic: 1.0, co: 12 },
+  { id: 'custom', name: 'Other (enter yields)', tar: 10, nic: 0.8, co: 10 }
+];
+var BASE_LIFE = { male: 71, female: 73, avg: 72 };
+var MILESTONES = [
+  { ms: 20 * 60000, t: '20 minutes', x: 'Heart rate and blood pressure come down.' },
+  { ms: 12 * 3600000, t: '12 hours', x: 'Carbon monoxide in your blood drops to a normal level.' },
+  { ms: 14 * DAY_MS, t: '2 weeks', x: 'Circulation improves and walking gets easier.' },
+  { ms: 30 * DAY_MS, t: '1 month', x: 'Coughing and shortness of breath start to ease.' },
+  { ms: 365 * DAY_MS, t: '1 year', x: "Heart disease risk falls to about half a smoker's." },
+  { ms: 5 * 365 * DAY_MS, t: '5 years', x: "Stroke risk keeps falling toward a non-smoker's." },
+  { ms: 10 * 365 * DAY_MS, t: '10 years', x: "Lung cancer death risk is about half a smoker's." },
+  { ms: 15 * 365 * DAY_MS, t: '15 years', x: "Heart disease risk is close to a non-smoker's." }
+];
+
+function brandById(id) { for (var i = 0; i < BRANDS.length; i++) if (BRANDS[i].id === id) return BRANDS[i]; return BRANDS[0]; }
+
+function yieldsFor(row) {
+  var b = brandById(row.brand);
+  if (row.brand === 'custom') {
+    var c = row.custom || {};
+    return { name: 'Your brand', tar: +c.tar || 0, nic: +c.nic || 0, co: +c.co || 0 };
+  }
+  return { name: b.name, tar: b.tar, nic: b.nic, co: b.co };
+}
+
+function intake(rows, depth) {
+  var out = { sticks: 0, nic: 0, tar: 0, co: 0, lines: [] };
+  rows.forEach(function (r) {
+    var n = Math.max(0, +r.count || 0), y = yieldsFor(r);
+    var l = { name: y.name, n: n, nic: y.nic * depth * n, tar: y.tar * depth * n, co: y.co * depth * n };
+    out.lines.push(l);
+    out.sticks += n; out.nic += l.nic; out.tar += l.tar; out.co += l.co;
+  });
+  return out;
+}
+
+function depthFactor(d) { d = +d; return d <= 1.2 ? 0.8 : (d <= 1.8 ? 1 : 1.25); }
+function minPerStick(d) { return MIN_PER_CIG * depthFactor(d); }
+
+function project(p, perDay, minPer) {
+  var base = p.life;
+  var start = Math.min(p.start, p.age);
+  var k = perDay * 365 * (minPer || MIN_PER_CIG) / MIN_PER_YEAR;   // years of life lost per year of smoking
+  var rawEnd = (base + k * start) / (1 + k);                       // age at death when the loss shortens the smoking years too
+  var rawLoss = base - rawEnd;
+  var scale = rawLoss > MAX_LOSS_YEARS ? MAX_LOSS_YEARS / rawLoss : 1;   // keeps both scenarios in proportion under the cap
+  var end = Math.min(base, Math.max(base - rawLoss * scale, p.age + 1));
+  var yrsSoFar = Math.max(0, p.age - start);
+  var quitEnd = Math.min(base, Math.max(base - k * yrsSoFar * scale, p.age + 1));
+  return { base: base, end: end, lost: base - end, quitEnd: quitEnd, quitLoss: base - quitEnd, gain: Math.max(0, quitEnd - end), k: k, pastBase: p.age >= base };
+}
+
+function makeBase(tk, price, depth) {
+  return { sticks: tk.sticks, nic: tk.nic, tar: tk.tar, co: tk.co, price: +price || 0, minPer: minPerStick(depth), depth: +depth };
+}
+function streakStats(base, ms) {
+  var d = Math.max(0, ms) / DAY_MS;
+  return { sticks: base.sticks * d, mins: base.sticks * base.minPer * d, nic: base.nic * d, tar: base.tar * d, co: base.co * d, money: base.sticks * base.price * d };
+}
+function splitDur(ms) {
+  var s = Math.floor(Math.max(0, ms) / 1000);
+  return { d: Math.floor(s / 86400), h: Math.floor(s % 86400 / 3600), m: Math.floor(s % 3600 / 60), s: s % 60 };
+}
+/*END*/
+
+function $(id) { return document.getElementById(id); }
+var KEY = 'last-stick-v1', TABKEY = 'last-stick-tab';
+var DEFAULT_STREAK = { start: null, best: 0, slips: 0, base: null, last: null };
+var state = {
+  p: { age: 30, start: 18, sex: 'male', life: 71, lifeEdited: false, price: 15, depth: 1.5 },
+  rows: [{ brand: 'classic-connect', count: 6 }, { brand: 'marlboro-compact', count: 4 }],
+  touched: false,
+  streak: Object.assign({}, DEFAULT_STREAK)
+};
+var store = { ref: null };
+var curTab = 'calc';
+
+function normalize() {
+  clampProfile();
+  state.streak = Object.assign({}, DEFAULT_STREAK, state.streak || {});
+}
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (s && s.p && s.rows && s.rows.length) state = s;
+  } catch (e) {}
+  normalize();
+}
+
+/* Saving: browser storage always, plus the page's private database when this viewer has one. Writes happen after a person acts, never on load. */
+var saveTimer = null, writing = false, dirty = false;
+function persist() {
+  state.updated = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  if (store.ref) { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 600); }
+}
+function flush() {
+  if (writing || !dirty || !store.ref) return;
+  writing = true; dirty = false;
+  var body = { state: JSON.parse(JSON.stringify(state)) };
+  store.ref.set(body).catch(function () {}).then(function () { writing = false; if (dirty) flush(); });
+}
+document.addEventListener('visibilitychange', function () { if (document.hidden && dirty) { clearTimeout(saveTimer); flush(); } });
+
+function initStore() {
+  var c = window.claude;
+  if (!c || !c.use) return;
+  Promise.all([c.use('db'), c.use('user')]).then(function (r) {
+    var db = r[0], user = r[1];
+    if (!db || !user) return null;
+    return user.id().then(function (id) {
+      if (!id) return null;
+      store.ref = db.doc('data/users/' + id + '/app');
+      return store.ref.get();
+    });
+  }).then(function (snap) {
+    if (!snap) return;
+    var d = snap.exists ? snap.data() : null, remote = d && d.state;
+    if (remote && remote.p && remote.rows && (remote.updated || 0) >= (state.updated || 0)) {
+      state = JSON.parse(JSON.stringify(remote)); normalize();
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+      applyAll();
+    } else if (state.updated) { dirty = true; flush(); }
+  }).catch(function () {});
+}
+
+function fmt(n, d) { return (+n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function dur(mins) {
+  var h = Math.floor(mins / 60), m = Math.round(mins - h * 60);
+  if (h && m) return h + ' h ' + m + ' min';
+  return h ? h + ' h' : m + ' min';
+}
+function yrs(n) { return fmt(n, 1) + (Math.abs(n - 1) < 0.05 ? ' year' : ' years'); }
+function durMs(ms) {
+  var t = splitDur(ms);
+  var y = Math.floor(t.d / 365), dd = t.d - y * 365;
+  if (y) return y + ' y ' + dd + ' d';
+  if (t.d) return t.d + ' d ' + t.h + ' h';
+  if (t.h) return t.h + ' h ' + t.m + ' min';
+  if (t.m) return t.m + ' min';
+  return t.s + ' s';
+}
+function lifeMins(mins) {
+  if (mins >= MIN_PER_YEAR) return fmt(mins / MIN_PER_YEAR, 1) + ' years';
+  return durMs(mins * 60000);
+}
+function mass(mg, dp) {
+  if (mg >= 1000) return { v: fmt(mg / 1000, mg >= 100000 ? 0 : 2), u: 'g' };
+  return { v: fmt(mg, dp == null ? (mg < 10 ? 1 : 0) : dp), u: 'mg' };
+}
+
+function renderRows() {
+  var el = $('rows'); el.innerHTML = '';
+  state.rows.forEach(function (r, i) {
+    var d = document.createElement('div'); d.className = 'row'; d.dataset.i = i;
+    var opts = BRANDS.map(function (b) { return '<option value="' + b.id + '"' + (b.id === r.brand ? ' selected' : '') + '>' + b.name + '</option>'; }).join('');
+    var c = r.custom || { tar: 10, nic: 0.8, co: 10 };
+    d.innerHTML =
+      '<div class="row-main">' +
+      '<select aria-label="Cigarette type" data-k="brand">' + opts + '</select>' +
+      '<div class="stepper"><button type="button" data-a="dec" aria-label="One fewer">−</button>' +
+      '<input type="number" inputmode="numeric" min="0" max="99" aria-label="Number smoked" data-k="count" value="' + (r.count == null ? 0 : r.count) + '">' +
+      '<button type="button" data-a="inc" aria-label="One more">+</button></div>' +
+      '<button type="button" class="x" data-a="del" aria-label="Remove this brand">×</button></div>' +
+      (r.brand === 'custom' ?
+        '<div class="custom">' +
+        '<div class="field"><label>Tar mg</label><input type="number" inputmode="decimal" step="0.1" min="0" data-k="c-tar" value="' + c.tar + '"></div>' +
+        '<div class="field"><label>Nicotine mg</label><input type="number" inputmode="decimal" step="0.1" min="0" data-k="c-nic" value="' + c.nic + '"></div>' +
+        '<div class="field"><label>CO mg</label><input type="number" inputmode="decimal" step="0.1" min="0" data-k="c-co" value="' + c.co + '"></div>' +
+        '</div>' : '');
+    el.appendChild(d);
+  });
+}
+
+function touch() { if (!state.touched) { state.touched = true; $('example').hidden = true; } }
+var DEPTH_NAMES = { '1': 'light', '1.5': 'typical', '2.2': 'deep' };
+
+function renderResults() {
+  var p = state.p, depth = +p.depth, minPer = minPerStick(depth);
+  var tk = intake(state.rows, depth);
+  var pr = project({ age: p.age, start: p.start, life: p.life }, tk.sticks, minPer);
+
+  var none = tk.sticks === 0;
+  $('headline').innerHTML = none ? 'No cigarettes, no loss.' :
+    'You would live to about ' + Math.round(pr.end) + '. That is <span class="lost">' + yrs(pr.lost) + '</span> short.';
+  $('sub').textContent = none ? 'Enter how many you smoke in a day to see the effect.' :
+    tk.sticks + ' cigarettes a day takes about ' + dur(tk.sticks * minPer) + ' of life every day, measured against an average life span of ' + p.life + '.';
+  var span = pr.base, nowAge = Math.min(p.age, pr.end);
+  $('b-filter').style.flex = '0 0 ' + (nowAge / span * 100) + '%';
+  $('b-paper').style.flex = '1 1 0';
+  $('b-ash').style.flex = '0 0 ' + (pr.lost / span * 100) + '%';
+  $('sc-now').textContent = 'now ' + p.age;
+  $('sc-end').textContent = none ? '' : 'burns out ' + Math.round(pr.end);
+  $('sc-base').textContent = p.life;
+  $('legend').innerHTML =
+    '<li><i style="background:var(--filter)"></i><span class="v">' + p.age + ' years</span><span class="n">Lived so far</span></li>' +
+    '<li><i style="background:var(--paper);border:1px solid var(--line)"></i><span class="v">' + yrs(Math.max(0, pr.end - p.age)) + '</span><span class="n">Left at this rate</span></li>' +
+    '<li><i style="background:var(--ash)"></i><span class="v">' + yrs(pr.lost) + '</span><span class="n">Lost to smoking</span></li>';
+  var msg = $('msg');
+  if (pr.pastBase) { msg.hidden = false; msg.textContent = 'You are already past the average life span, so the model shows no loss. Treat the numbers below as intake only.'; }
+  else if (pr.lost >= MAX_LOSS_YEARS - 0.01) { msg.hidden = false; msg.textContent = 'The estimate is capped at ' + MAX_LOSS_YEARS + ' years. The real figure could be higher or lower.'; }
+  else msg.hidden = true;
+
+  $('depth-note').textContent = 'At ' + (DEPTH_NAMES[String(depth)] || 'your') + ' inhalation: ' + fmt(depth, 1) + '× the pack figures, ' + fmt(minPer, 0) + ' minutes of life per cigarette.';
+  var tspY = tk.tar * 365 / 1000 / 5;
+  $('metrics').innerHTML =
+    metric('Nicotine', tk.nic, 'mg', tk.nic * 365 / 1000, 'g a year', 'var(--nic)', 'Reaches the brain in seconds and drives the craving.', 1) +
+    metric('Tar', tk.tar, 'mg', tk.tar * 365 / 1000, 'g a year', 'var(--tar)', 'About ' + fmt(tspY, 1) + ' teaspoons a year coat the lungs.', 0) +
+    metric('Carbon monoxide', tk.co, 'mg', tk.co * 365 / 1000, 'g a year', 'var(--co)', 'Binds to red blood cells over 200 times more strongly than oxygen.', 0);
+
+  $('tbody').innerHTML = tk.lines.map(function (l) {
+    return '<tr><td>' + l.name + '</td><td class="r">' + l.n + '</td><td class="r">' + fmt(l.nic, 1) + '</td><td class="r">' + fmt(l.tar, 0) + '</td><td class="r">' + fmt(l.co, 0) + '</td></tr>';
+  }).join('');
+  $('tfoot').innerHTML = '<tr><td>Total</td><td class="r">' + tk.sticks + '</td><td class="r">' + fmt(tk.nic, 1) + '</td><td class="r">' + fmt(tk.tar, 0) + '</td><td class="r">' + fmt(tk.co, 0) + '</td></tr>';
+
+  $('quit').innerHTML =
+    qrow('Keep smoking', Math.round(pr.end), pr.end, pr.base, 'var(--ember)') +
+    qrow('Quit today', Math.round(pr.quitEnd), pr.quitEnd, pr.base, 'var(--good)') +
+    '<p class="gain">' + (none ? 'You are already at zero. Keep it there.' :
+      '<strong>+' + yrs(pr.gain) + '</strong> back by quitting today. Past smoking still counts, but every day from now stays yours. Skipping one pack of 20 returns about ' + dur(20 * minPer) + '.') + '</p>';
+
+  var perDay = tk.sticks * p.price;
+  $('costs').innerHTML =
+    cost('Per day', '₹' + fmt(perDay, 0)) + cost('Per month', '₹' + fmt(perDay * 30, 0)) +
+    cost('Per year', '₹' + fmt(perDay * 365, 0)) + cost('Sticks a year', fmt(tk.sticks * 365, 0));
+}
+function metric(name, perDay, unit, perYear, yUnit, color, note, d) {
+  return '<div class="metric" style="--c:' + color + '"><div class="name">' + name + '</div>' +
+    '<div class="num">' + fmt(perDay, d) + '<small>' + unit + '</small></div>' +
+    '<div class="year">' + fmt(perYear, perYear < 10 ? 1 : 0) + ' ' + yUnit + '</div><p>' + note + '</p></div>';
+}
+function qrow(label, ageRound, age, base, color) {
+  return '<div class="qrow"><div class="head"><span>' + label + '</span><b>about age ' + ageRound + '</b></div>' +
+    '<div class="track"><span style="width:' + (age / base * 100) + '%;background:' + color + '"></span></div></div>';
+}
+function cost(k, v) { return '<div><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
+
+/* ---- Quit streak ---- */
+function currentBase() {
+  var p = state.p, tk = intake(state.rows, +p.depth);
+  return makeBase(tk, p.price, p.depth);
+}
+function nowLocalInput() {
+  var d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 16);
+}
+function stile(name, num, unit, color, note) {
+  return '<div class="metric" style="--c:' + color + '"><div class="name">' + name + '</div>' +
+    '<div class="num">' + num + (unit ? '<small>' + unit + '</small>' : '') + '</div>' + (note ? '<p>' + note + '</p>' : '') + '</div>';
+}
+function massTile(name, mg, color, note) { var m = mass(mg); return stile(name, m.v, m.u, color, note); }
+
+function renderStreak() {
+  var s = state.streak, now = Date.now(), on = !!s.start;
+  var cur = currentBase(), b = (on && s.base) ? s.base : cur;
+  var el = on ? now - s.start : 0;
+  $('s-off').hidden = on; $('s-on').hidden = !on;
+
+  var baseTxt = b.sticks ? 'Counted against your calculator day: ' + fmt(b.sticks, 0) + ' cigarettes, ₹' + fmt(b.sticks * b.price, 0) + ' a day.' : 'Enter your daily cigarettes in the Calculator tab first.';
+  $('s-base-off').textContent = baseTxt;
+  $('s-base-on').textContent = baseTxt.replace('Counted against your calculator day', 'Counting against');
+
+  if (!on) {
+    $('s-start').disabled = !cur.sticks;
+    $('since').max = nowLocalInput();
+    if (!$('since').value) $('since').value = nowLocalInput();
+    var last = $('s-last');
+    if (s.last) {
+      last.hidden = false;
+      last.textContent = 'Your streak ended after ' + durMs(s.last.ms) + '. ' + (s.last.isBest ? 'That is your longest so far. ' : 'Your longest is ' + durMs(s.best) + '. ') +
+        'One cigarette does not erase the days you banked. Start again when you are ready.';
+    } else last.hidden = true;
+  } else {
+    var t = splitDur(el);
+    $('u-d').textContent = t.d; $('u-h').textContent = String(t.h).padStart(2, '0');
+    $('u-m').textContent = String(t.m).padStart(2, '0'); $('u-s').textContent = String(t.s).padStart(2, '0');
+    $('s-since').textContent = 'Since ' + new Date(s.start).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+    var nx = null, prev = 0;
+    for (var i = 0; i < MILESTONES.length; i++) { if (MILESTONES[i].ms > el) { nx = MILESTONES[i]; break; } prev = MILESTONES[i].ms; }
+    $('s-next').innerHTML = nx ?
+      '<div>Next: <b>' + nx.t + '</b> in ' + durMs(nx.ms - el) + '. ' + nx.x + '</div><div class="track"><span style="width:' + Math.min(100, (el - prev) / (nx.ms - prev) * 100) + '%"></span></div>' :
+      '<div>You have passed every milestone on this list.</div>';
+  }
+  $('r-best').textContent = durMs(Math.max(s.best || 0, el));
+  $('r-slips').textContent = s.slips || 0;
+
+  var st = streakStats(b, el);
+  $('s-stats').innerHTML = on ?
+    '<div class="metrics sm">' +
+    stile('Cigarettes skipped', fmt(Math.floor(st.sticks), 0), '', 'var(--ink)', '') +
+    stile('Life regained', lifeMins(st.mins), '', 'var(--good)', '20 min per cigarette at your inhalation level') +
+    massTile('Nicotine avoided', st.nic, 'var(--nic)', '') +
+    massTile('Tar avoided', st.tar, 'var(--tar)', '') +
+    massTile('Carbon monoxide avoided', st.co, 'var(--co)', '') +
+    stile('Money saved', '₹' + fmt(st.money, 0), '', 'var(--good)', '') +
+    '</div>' :
+    '<p class="hint">Start a streak to watch these numbers grow every second.</p>';
+
+  var periods = [[7, '1 week'], [30, '1 month'], [365, '1 year']];
+  var cols = periods.map(function (q) { return streakStats(b, q[0] * DAY_MS); });
+  function mrow(label, f) { return '<tr><td>' + label + '</td>' + cols.map(function (c) { return '<td class="r">' + f(c) + '</td>'; }).join('') + '</tr>'; }
+  function ms(mg) { var m = mass(mg); return m.v + ' ' + m.u; }
+  $('s-proj').innerHTML = '<thead><tr><th></th>' + periods.map(function (q) { return '<th class="r">' + q[1] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    mrow('Cigarettes skipped', function (c) { return fmt(Math.round(c.sticks), 0); }) +
+    mrow('Life regained', function (c) { return lifeMins(c.mins); }) +
+    mrow('Nicotine avoided', function (c) { return ms(c.nic); }) +
+    mrow('Tar avoided', function (c) { return ms(c.tar); }) +
+    mrow('Carbon monoxide avoided', function (c) { return ms(c.co); }) +
+    mrow('Money saved', function (c) { return '₹' + fmt(c.money, 0); }) + '</tbody>';
+
+  var firstNext = true;
+  $('s-ms').innerHTML = MILESTONES.map(function (m) {
+    var done = on && el >= m.ms, cls = '', pill = '';
+    if (done) { cls = 'done'; pill = 'Reached'; }
+    else if (on && firstNext) { cls = 'next'; pill = 'in ' + durMs(m.ms - el); firstNext = false; }
+    return '<li class="' + cls + '"><span class="t">' + m.t + '</span><span>' + m.x + '</span>' + (pill ? '<span class="pill">' + pill + '</span>' : '<span></span>') + '</li>';
+  }).join('');
+}
+
+function startStreak() {
+  var s = state.streak, now = Date.now();
+  var v = $('since').value, ts = v ? new Date(v).getTime() : now;
+  if (!isFinite(ts) || ts > now) ts = now;
+  s.start = ts; s.base = currentBase(); s.last = null;
+  persist(); renderStreak();
+}
+function endStreak() {
+  var s = state.streak, ms = Date.now() - s.start;
+  s.last = { ms: ms, isBest: ms > (s.best || 0) };
+  s.best = Math.max(s.best || 0, ms); s.slips = (s.slips || 0) + 1;
+  s.start = null; s.base = null;
+  $('s-confirm').hidden = true; $('s-slip').hidden = false;
+  $('since').value = nowLocalInput();
+  persist(); renderStreak();
+}
+
+function clampProfile() {
+  var p = state.p;
+  p.age = Math.min(100, Math.max(14, +p.age || 30));
+  p.start = Math.min(p.age, Math.max(8, +p.start || 18));
+  p.life = Math.min(110, Math.max(40, +p.life || 71));
+  p.price = Math.max(0, +p.price || 0);
+}
+
+function setTab(t) {
+  curTab = t;
+  $('view-calc').hidden = t !== 'calc'; $('view-streak').hidden = t !== 'streak';
+  $('tab-calc').setAttribute('aria-selected', t === 'calc'); $('tab-streak').setAttribute('aria-selected', t === 'streak');
+  try { localStorage.setItem(TABKEY, t); } catch (e) {}
+  if (t === 'streak') renderStreak();
+}
+
+function afterCalcChange() { touch(); persist(); renderResults(); if (curTab === 'streak') renderStreak(); }
+
+function bind() {
+  ['age', 'start', 'life', 'price'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      state.p[id] = this.value === '' ? '' : +this.value;
+      if (id === 'life') state.p.lifeEdited = true;
+      clampProfile(); afterCalcChange();
+    });
+  });
+  $('sex').addEventListener('change', function () {
+    state.p.sex = this.value;
+    if (!state.p.lifeEdited) { state.p.life = BASE_LIFE[this.value]; $('life').value = state.p.life; }
+    afterCalcChange();
+  });
+  document.querySelectorAll('input[name="depth"]').forEach(function (r) {
+    r.addEventListener('change', function () { state.p.depth = +this.value; afterCalcChange(); });
+  });
+  $('add').addEventListener('click', function () {
+    state.rows.push({ brand: 'classic-regular', count: 1 }); renderRows(); afterCalcChange();
+  });
+  var rows = $('rows');
+  rows.addEventListener('input', function (e) {
+    var t = e.target, row = t.closest('.row'); if (!row) return;
+    var r = state.rows[+row.dataset.i], k = t.dataset.k;
+    if (k === 'count') r.count = t.value === '' ? 0 : Math.min(99, Math.max(0, Math.floor(+t.value)));
+    else if (k && k.indexOf('c-') === 0) { r.custom = r.custom || { tar: 10, nic: 0.8, co: 10 }; r.custom[k.slice(2)] = +t.value; }
+    afterCalcChange();
+  });
+  rows.addEventListener('change', function (e) {
+    var t = e.target; if (t.dataset.k !== 'brand') return;
+    var r = state.rows[+t.closest('.row').dataset.i]; r.brand = t.value;
+    if (t.value === 'custom' && !r.custom) r.custom = { tar: 10, nic: 0.8, co: 10 };
+    renderRows(); afterCalcChange();
+  });
+  rows.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-a]'); if (!b) return;
+    var i = +b.closest('.row').dataset.i, r = state.rows[i];
+    if (b.dataset.a === 'inc') r.count = Math.min(99, (+r.count || 0) + 1);
+    if (b.dataset.a === 'dec') r.count = Math.max(0, (+r.count || 0) - 1);
+    if (b.dataset.a === 'del') { state.rows.splice(i, 1); if (!state.rows.length) state.rows.push({ brand: 'classic-regular', count: 0 }); }
+    renderRows(); afterCalcChange();
+  });
+
+  $('tab-calc').addEventListener('click', function () { setTab('calc'); });
+  $('tab-streak').addEventListener('click', function () { setTab('streak'); });
+  $('s-start').addEventListener('click', startStreak);
+  $('s-slip').addEventListener('click', function () { this.hidden = true; $('s-confirm').hidden = false; $('s-no').focus(); });
+  $('s-no').addEventListener('click', function () { $('s-confirm').hidden = true; $('s-slip').hidden = false; });
+  $('s-yes').addEventListener('click', endStreak);
+  $('s-rebase').addEventListener('click', function () { state.streak.base = currentBase(); persist(); renderStreak(); });
+  setInterval(function () { if (curTab === 'streak' && state.streak.start && !document.hidden) renderStreak(); }, 1000);
+}
+
+function applyAll() {
+  clampProfile();
+  var p = state.p;
+  $('age').value = p.age; $('start').value = p.start; $('sex').value = p.sex; $('life').value = p.life; $('price').value = p.price;
+  document.querySelectorAll('input[name="depth"]').forEach(function (r) { r.checked = (+r.value === +p.depth); });
+  $('example').hidden = !!state.touched;
+  renderRows(); renderResults(); renderStreak();
+}
+
+function init() {
+  load();
+  bind();
+  applyAll();
+  var t = 'calc';
+  try { t = localStorage.getItem(TABKEY) === 'streak' ? 'streak' : 'calc'; } catch (e) {}
+  setTab(t);
+  initStore();
+}
+init();
+</script>
+<script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script></body></html>
