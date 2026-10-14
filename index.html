@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#16242B"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png" type="image/png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Last Stick"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style><title>Last Stick</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://vrkdyikakhgmcbzvgtfe.supabase.co; base-uri 'none'; form-action 'none'"><meta name="theme-color" content="#16242B"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png" type="image/png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Last Stick"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style><title>Last Stick</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -292,6 +292,8 @@ h3.grp:first-child { margin-top: 0; }
 .openitem { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .openitem small { display: block; color: var(--muted); font-size: 12.5px; }
 
+.foot { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); max-width: 80ch; }
+.foot a { color: var(--muted); }
 /* Toasts */
 .toasts { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; justify-items: center; pointer-events: none; z-index: 50; }
 .toast { pointer-events: auto; width: 100%; max-width: 420px; background: var(--ink); color: var(--bg); padding: 12px 14px; border-radius: 10px; font-size: 14px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3); }
@@ -531,8 +533,9 @@ h3.grp:first-child { margin-top: 0; }
         <p style="margin:0 0 12px">Join squads of other people quitting, earn points for every milestone and cheer each other on. There is no chat and no typing: you appear under a generated name with your points and streak.</p>
         <p class="lbl" style="margin:0 0 6px">Your name</p>
         <div class="nickrow"><b class="nick" id="so-nick"></b><button type="button" class="btn small" id="so-reroll">New name</button></div>
+        <label class="check"><input type="checkbox" id="so-age"> I am 18 or older</label>
         <label class="check"><input type="checkbox" id="so-public-new"> Show me on the public board</label>
-        <button type="button" class="btn primary" id="so-join">Join Squads</button>
+        <button type="button" class="btn primary" id="so-join" disabled>Join Squads</button>
         <ul class="hint list">
           <li>Shared: your generated name, points and current streak length.</li>
           <li>Not shared: your cigarettes, spending, health numbers, or anything about who you are.</li>
@@ -549,6 +552,10 @@ h3.grp:first-child { margin-top: 0; }
           <div><dt>Cheers sent</dt><dd id="m-cheers"></dd></div>
         </dl>
         <label class="check"><input type="checkbox" id="so-public"> Show me on the public board</label>
+        <div id="so-tools" hidden style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px">
+          <button type="button" class="btn small" id="so-export">Download my data</button>
+          <button type="button" class="btn small warn" id="so-delete">Delete my profile</button>
+        </div>
         <details class="back">
           <summary>Back up or restore your profile</summary>
           <p class="hint" style="margin-top:8px">This code is the key to your profile. Keep it private. Paste it on another device to restore.</p>
@@ -594,11 +601,17 @@ h3.grp:first-child { margin-top: 0; }
       </section>
     </div>
   </div>
+
+  <footer class="foot" id="foot">
+    <p><b>Estimates, not medical advice.</b> Intake figures use typical machine-tested yields per cigarette and your inhalation setting, so real intake varies. Life figures use a rule of thumb of about 20 minutes of life per cigarette, scaled by inhalation depth and capped, based on published population studies of smokers. Recovery timelines are commonly cited by public health agencies. Talk to a doctor before changing medication or starting exercise.</p>
+    <p><b>Need help quitting?</b> In India you can call the National Tobacco Quitline at 1800-11-2356 (please verify the number on the official site) or ask your doctor about nicotine replacement and counselling.</p>
+    <p id="legal" hidden><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
+  </footer>
 </div>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
-<script>window.LS_CONFIG={url:"https://vrkdyikakhgmcbzvgtfe.supabase.co",key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZya2R5aWtha2hnbWNienZndGZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzI0MDYsImV4cCI6MjEwNzU0ODQwNn0.Wk1rzEAXZSQNa_FwLAar1dX7r6H7ByIpiDFizJ3OZGs"};</script><script>
+<script>window.LS_CONFIG={url:"https://vrkdyikakhgmcbzvgtfe.supabase.co",tools:false,key:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZya2R5aWtha2hnbWNienZndGZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NzI0MDYsImV4cCI6MjEwNzU0ODQwNn0.Wk1rzEAXZSQNa_FwLAar1dX7r6H7ByIpiDFizJ3OZGs"};</script><script>
 /*LOGIC*/
 var MIN_PER_CIG = 20, MAX_LOSS_YEARS = 15, MIN_PER_YEAR = 525600, DAY_MS = 86400000;
 var BRANDS = [
@@ -1215,6 +1228,7 @@ function startBreath() {
 
 /* ---- Squads ---- */
 var CFG = window.LS_CONFIG || null;
+if (CFG) { var lg = document.getElementById('legal'); if (lg) lg.hidden = false; }
 var soProf = null, soSquads = [], soInbox = null, soRows = [], soBoard = { squad: null, by: 'week', chosen: false };
 var soBusy = false, soLast = 0, soNick = '', soCheerFor = null, syncT = null;
 var ERRS = {
@@ -1284,6 +1298,7 @@ function renderSocial() {
   if (reg) { renderSocialMe(); renderBoard(); if (Date.now() - soLast > 60000) refreshSocial(); }
 }
 function renderSocialMe() {
+  $('so-tools').hidden = !(CFG && CFG.tools);
   $('m-nick').textContent = state.social.nick || '';
   $('m-level').textContent = levelFor(pointsTotal()).cur.name;
   $('m-total').textContent = soProf ? fmt(soProf.tot, 0) : '...';
@@ -1342,7 +1357,7 @@ function renderBoard() {
   var sq = null; soSquads.forEach(function (q) { if (q.id === soBoard.squad) sq = q; });
   $('so-sqinfo').innerHTML = sq ?
     '<div><b>' + esc(sq.name) + '</b> · ' + sq.members + ' member' + (sq.members === 1 ? '' : 's') + ' · ' + esc(THEMES[sq.theme] || '') + ' · ' + (sq.is_open ? 'open' : 'invite only') + '</div>' +
-    '<div>Invite code <span class="code">' + esc(sq.code) + '</span></div><div><button type="button" class="btn small" data-copy="' + esc(sq.code) + '">Copy code</button></div>' : '';
+    '<div>Invite code <span class="code">' + esc(sq.code) + '</span></div><div><button type="button" class="btn small" data-copy="' + esc(sq.code) + '">Copy code</button> ' + (CFG && CFG.tools ? '<button type="button" class="btn small warn" data-leave="' + esc(sq.id) + '">Leave squad</button>' : '') + '</div>' : '';
   var ib = soInbox;
   $('so-cheers').innerHTML = ib && ib.recent && ib.recent.length ? ib.recent.map(function (c) {
     return '<li><span class="t">' + shortDate(c.at) + '</span><span><b>' + esc(c.from) + '</b>: ' + esc(CHEERS[c.kind] || '') + '</span><span></span></li>';
@@ -1368,8 +1383,10 @@ function bindExtra() {
   function onLog(e) { var b = e.target.closest('button[data-log]'); if (b) logPractice(b.dataset.log, b.dataset.name); }
   $('ex-list').addEventListener('click', onLog); $('yo-list').addEventListener('click', onLog);
 
+  $('so-age').addEventListener('change', function () { $('so-join').disabled = !this.checked; });
   $('so-reroll').addEventListener('click', function () { soNick = genNick(); $('so-nick').textContent = soNick; });
   $('so-join').addEventListener('click', function () {
+    if (!$('so-age').checked) return;
     var secret = genSecret(), nick = soNick || genNick(), tries = 0, pub = $('so-public-new').checked;
     this.disabled = true; var btn = this;
     function go() {
@@ -1397,6 +1414,26 @@ function bindExtra() {
       soLast = 0; soBoard = { squad: null, by: 'week', chosen: false }; $('so-restore').value = '';
       showMsg('Profile restored.', true); renderSocial();
     }).catch(function (e) { showMsg(errText(e)); });
+  });
+  $('so-export').addEventListener('click', function () {
+    rpc('ls_export_me', { p_secret: state.social.secret }).then(function (d) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' }));
+      a.download = 'last-stick-squads-data.json'; document.body.appendChild(a); a.click(); a.remove();
+    }).catch(function (e) { showMsg(errText(e)); });
+  });
+  $('so-delete').addEventListener('click', function () {
+    if (!window.confirm('Delete your Squads profile, points and cheers from the server? This cannot be undone. Your streak and achievements on this device stay.')) return;
+    rpc('ls_delete_me', { p_secret: state.social.secret }).then(function () {
+      state.social = { secret: null, id: null, nick: null, sent: {}, cheers: 0, nsq: 0 }; persist();
+      soProf = null; soSquads = []; soRows = []; soInbox = null; soLast = 0; soBoard = { squad: null, by: 'week', chosen: false }; soNick = '';
+      showMsg('Your Squads profile was deleted.', true); renderSocial();
+    }).catch(function (e) { showMsg(errText(e)); });
+  });
+  $('so-sqinfo').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-leave]'); if (!b || !window.confirm('Leave this squad?')) return;
+    rpc('ls_leave_squad', { p_secret: state.social.secret, p_squad: b.dataset.leave }).then(function () { soBoard = { squad: null, by: soBoard.by, chosen: true }; soLast = 0; return refreshSocial(); })
+      .catch(function (err) { showMsg(errText(err)); });
   });
   $('so-code').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
   $('so-codego').addEventListener('click', function () { var c = $('so-code').value.trim(); if (c) { $('so-code').value = ''; joinByCode(c); } });

@@ -1,0 +1,1574 @@
+<title>Last Stick</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: two tabs. Calculator has inputs left, results right; Quit streak has the live timer left, savings and recovery right. Both stack on phones. The hero is a cigarette that burns down: filter = years lived, paper = years left, ember = projected end, ash = years lost. */
+:root {
+  --bg: #E8EDEF;
+  --surface: #F6F8F8;
+  --ink: #16242B;
+  --muted: #55666E;
+  --line: #C6D1D5;
+  --ember: #D4401C;
+  --filter: #C79E62;
+  --paper: #FFFFFF;
+  --ash: #8D9BA1;
+  --nic: #9A5B0C;
+  --tar: #6A4630;
+  --co: #345F7E;
+  --good: #1F7A52;
+  --field: #FFFFFF;
+  --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10181C; --surface: #19242A; --ink: #E6EEF0; --muted: #94A6AD; --line: #2B3A41;
+    --ember: #FF6B45; --filter: #C79E62; --paper: #D7DFE2; --ash: #5E6E75;
+    --nic: #E0A04A; --tar: #C79A7C; --co: #7FB2D4; --good: #52C592; --field: #101A1F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10181C; --surface: #19242A; --ink: #E6EEF0; --muted: #94A6AD; --line: #2B3A41;
+  --ember: #FF6B45; --filter: #C79E62; --paper: #D7DFE2; --ash: #5E6E75;
+  --nic: #E0A04A; --tar: #C79A7C; --co: #7FB2D4; --good: #52C592; --field: #101A1F;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 22px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+header h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(44px, 9vw, 72px);
+  line-height: 0.95; letter-spacing: 0.01em; text-transform: uppercase; margin: 0 0 8px;
+}
+header p { margin: 0; max-width: 56ch; color: var(--muted); font-size: 16px; }
+
+.tabs { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; width: fit-content; max-width: 100%; background: var(--surface); }
+.tabs button { font: inherit; font-weight: 600; font-size: 14px; padding: 10px 20px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.tabs button + button { border-left: 1px solid var(--line); }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+
+.cols { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 880px) { .cols { grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 28px; } }
+.stack { display: grid; gap: 20px; min-width: 0; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+.panel h2 {
+  font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: 0.04em;
+  text-transform: uppercase; margin: 0 0 14px;
+}
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+label, .lbl { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+input[type="number"], input[type="datetime-local"], select {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--field);
+  border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; width: 100%; min-width: 0;
+}
+input[type="number"] { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--field); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label {
+  text-align: center; padding: 9px 4px; cursor: pointer; text-transform: none; letter-spacing: 0;
+  font-size: 13.5px; font-weight: 500; color: var(--ink); border-left: 1px solid var(--line);
+}
+.seg label:first-of-type { border-left: 0; }
+.seg input:checked + label { background: var(--ink); color: var(--bg); }
+.seg input:focus-visible + label { outline: 2px solid var(--ember); outline-offset: -3px; }
+
+.example { font-size: 12.5px; margin: 0 0 12px; padding: 7px 10px; border-radius: 6px; background: color-mix(in srgb, var(--filter) 22%, var(--surface)); border: 1px dashed var(--filter); }
+.rows { display: grid; gap: 10px; }
+.row { display: grid; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; padding-bottom: 0; }
+.row-main { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.stepper { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--field); }
+.stepper button { width: 36px; border: 0; background: transparent; color: var(--ink); font-size: 20px; cursor: pointer; }
+.stepper button:hover { background: var(--line); }
+.stepper input { width: 52px; border: 0; border-radius: 0; text-align: center; padding: 9px 2px; -moz-appearance: textfield; }
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.x { border: 0; background: transparent; color: var(--muted); font-size: 22px; line-height: 1; width: 32px; height: 38px; cursor: pointer; border-radius: 6px; }
+.x:hover { color: var(--ember); }
+.custom { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.custom .field label { font-size: 11px; }
+.btn-add {
+  margin-top: 12px; width: 100%; font: inherit; font-weight: 600; font-size: 14px; padding: 10px;
+  background: transparent; color: var(--ink); border: 1px dashed var(--ash); border-radius: 6px; cursor: pointer;
+}
+.btn-add:hover { border-style: solid; background: var(--field); }
+
+.btn { font: inherit; font-weight: 600; font-size: 15px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--field); color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--ink); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.primary { background: var(--good); border-color: var(--good); color: #fff; width: 100%; font-size: 16px; }
+:root[data-theme="dark"] .btn.primary { color: #08140E; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #08140E; } }
+.btn.warn { border-color: var(--ember); color: var(--ember); }
+.btn.small { font-size: 13px; padding: 8px 12px; font-weight: 500; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Results */
+.hero { padding: 22px 20px 20px; }
+.hero .kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.hero h2.big {
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(38px, 7.5vw, 58px); line-height: 1;
+  letter-spacing: 0.01em; text-transform: none; margin: 0 0 6px; text-wrap: balance;
+}
+.hero h2.big .lost { color: var(--ember); }
+.hero .sub { margin: 0 0 20px; color: var(--muted); max-width: 60ch; }
+
+.cig { display: flex; height: 40px; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); background: var(--paper); }
+.cig > div { height: 100%; min-width: 0; }
+.cig .filter { background: repeating-linear-gradient(90deg, var(--filter) 0 3px, color-mix(in srgb, var(--filter) 78%, #000) 3px 5px); }
+.cig .paper { background: var(--paper); }
+.cig .ember { flex: 0 0 9px; background: linear-gradient(90deg, #FFB347, var(--ember) 55%, #7A1F0A); box-shadow: 0 0 10px var(--ember); position: relative; z-index: 1; }
+.cig .ash { background: repeating-linear-gradient(135deg, var(--ash) 0 4px, color-mix(in srgb, var(--ash) 70%, var(--bg)) 4px 8px); opacity: 0.85; }
+.scale { display: flex; justify-content: space-between; font-family: var(--font-data); font-size: 12px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 16px; margin: 16px 0 0; padding: 0; list-style: none; }
+.legend li { display: grid; grid-template-columns: 14px 1fr; gap: 2px 8px; align-items: baseline; }
+.legend i { width: 14px; height: 14px; border-radius: 3px; display: block; transform: translateY(2px); }
+.legend .v { font-family: var(--font-data); font-size: 15px; font-variant-numeric: tabular-nums; }
+.legend .n { grid-column: 2; font-size: 12.5px; color: var(--muted); }
+
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.metric { border-top: 4px solid var(--c); padding-top: 10px; min-width: 0; }
+.metric .name { font-size: 12px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.metric .num { font-family: var(--font-display); font-weight: 800; font-size: 44px; line-height: 1.05; color: var(--c); font-variant-numeric: tabular-nums; }
+.metric .num small { font-family: var(--font-data); font-weight: 500; font-size: 13px; color: var(--muted); margin-left: 4px; }
+.metric .year { font-family: var(--font-data); font-size: 13px; font-variant-numeric: tabular-nums; }
+.metric p { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+.metrics.sm { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.metrics.sm .metric .num { font-size: 36px; }
+
+.tablewrap { overflow-x: auto; margin-top: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 420px; }
+th { text-align: left; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 8px; border-bottom: 1px solid var(--line); }
+th.r, td.r { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+tfoot td { font-weight: 600; border-bottom: 0; }
+
+.quit { display: grid; gap: 14px; }
+.qrow { display: grid; gap: 6px; }
+.qrow .head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.qrow .head b { font-family: var(--font-data); font-weight: 500; font-variant-numeric: tabular-nums; }
+.track { height: 14px; border-radius: 999px; background: var(--line); position: relative; overflow: hidden; }
+.track > span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+.gain { margin: 0; padding: 12px 14px; border-radius: 8px; background: color-mix(in srgb, var(--good) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--good) 45%, var(--line)); }
+.gain strong { color: var(--good); font-family: var(--font-display); font-size: 26px; font-weight: 800; letter-spacing: 0.02em; }
+
+.costs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 14px; margin: 0; }
+.costs div { min-width: 0; }
+.costs dt { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.costs dd { margin: 2px 0 0; font-family: var(--font-data); font-size: 18px; font-variant-numeric: tabular-nums; }
+
+.notes h2 { margin-bottom: 8px; }
+.notes ul { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; color: var(--muted); }
+.notes a { color: var(--ink); }
+.help { margin: 0; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--field); font-size: 14px; }
+.help b { font-family: var(--font-data); font-weight: 500; user-select: all; }
+.msg { font-size: 13px; color: var(--ember); margin: 8px 0 0; }
+
+/* Streak */
+.streak .kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.units { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+.unit { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 10px 2px 8px; text-align: center; }
+.unit b { display: block; font-family: var(--font-display); font-weight: 800; font-size: clamp(34px, 8vw, 50px); line-height: 1; font-variant-numeric: tabular-nums; color: var(--good); }
+.unit span { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.streak .since { margin: 0 0 14px; color: var(--muted); font-size: 13.5px; }
+.nextms { margin: 0 0 16px; display: grid; gap: 6px; font-size: 14px; }
+.nextms .track > span { background: var(--good); }
+.recap { margin: 0 0 14px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--field); font-size: 14px; }
+details.back { margin: 0 0 14px; }
+details.back summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+details.back .field { margin-top: 10px; }
+.confirm { display: grid; gap: 10px; margin-top: 12px; padding: 12px; border: 1px solid var(--ember); border-radius: 8px; font-size: 14px; }
+.rec { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); }
+.rec dt { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.rec dd { margin: 2px 0 0; font-family: var(--font-data); font-size: 16px; }
+.basenote { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+.ms { list-style: none; margin: 0; padding: 0; }
+.ms li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 4px 12px; padding: 11px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.ms li:last-child { border-bottom: 0; }
+.ms .t { font-family: var(--font-data); font-size: 13px; }
+.ms .pill { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; color: var(--muted); }
+.ms li.done .pill { background: color-mix(in srgb, var(--good) 16%, var(--surface)); border-color: var(--good); color: var(--good); }
+.ms li.next .pill { border-color: var(--ember); color: var(--ember); }
+.ms li.done .t { color: var(--good); }
+@media (max-width: 480px) { .ms li { grid-template-columns: minmax(0, 1fr) auto; } .ms .t { grid-column: 1 / -1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .cig > div { transition: flex-basis 0.35s ease, width 0.35s ease; }
+  .track > span { transition: width 0.35s ease; }
+}
+
+/* Tabs scroll on narrow screens */
+.tabs { overflow-x: auto; }
+.tabs button { white-space: nowrap; padding: 10px 14px; }
+input[type="text"] {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--field);
+  border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; width: 100%; min-width: 0;
+}
+.track.good > span { background: var(--good); }
+.mono { font-family: var(--font-data); font-weight: 500; word-break: break-all; user-select: all; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; letter-spacing: 0; text-transform: none; font-weight: 400; color: var(--ink); margin: 12px 0; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--good); }
+.hint.list { padding-left: 18px; margin: 14px 0 0; display: grid; gap: 4px; }
+.msg.okmsg { color: var(--good); }
+
+/* Achievements */
+.bigpts { display: flex; align-items: baseline; gap: 8px; margin: 0 0 12px; }
+.bigpts b { font-family: var(--font-display); font-weight: 800; font-size: 56px; line-height: 1; color: var(--good); font-variant-numeric: tabular-nums; }
+.bigpts span { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.recent { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.recent li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.recent li:last-child { border-bottom: 0; padding-bottom: 0; }
+.recent b { font-family: var(--font-data); font-weight: 500; color: var(--good); }
+h3.cat { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-size: 17px; margin: 18px 0 8px; color: var(--muted); }
+h3.cat:first-child { margin-top: 4px; }
+.achgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.ach { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 10px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); opacity: 0.85; }
+.ach.got { opacity: 1; border-color: var(--good); background: color-mix(in srgb, var(--good) 10%, var(--field)); }
+.badge { grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--ash); font-family: var(--font-data); font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ach.got .badge { border-color: var(--good); background: var(--good); color: var(--bg); }
+.ach .t { font-weight: 600; font-size: 14px; line-height: 1.25; }
+.ach .d { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.ach .p { grid-column: 1 / -1; font-size: 12px; color: var(--muted); font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.ach .p .track { height: 6px; margin-top: 4px; }
+.ach .p .track > span { background: var(--ash); }
+.ach.got .p { color: var(--good); }
+
+/* Lung care */
+.orb-wrap { display: grid; place-items: center; padding: 14px 0 10px; }
+.orb { width: min(66vw, 220px); aspect-ratio: 1; max-width: 100%; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--co); background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--co) 14%, var(--field)), color-mix(in srgb, var(--co) 32%, var(--field))); transform: scale(0.8); }
+.orb-text { text-align: center; }
+.orb-text b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1.05; text-transform: uppercase; letter-spacing: 0.04em; }
+.orb-text span { font-family: var(--font-data); font-size: 22px; font-variant-numeric: tabular-nums; }
+.dots { display: flex; gap: 8px; justify-content: space-between; margin-top: 14px; }
+.dots div { display: grid; gap: 4px; justify-items: center; font-size: 11px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+.dots i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); display: block; }
+.dots i.on { background: var(--good); border-color: var(--good); }
+.praclist, #yo-list { display: grid; gap: 8px; }
+details.prac { border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+details.prac summary { cursor: pointer; padding: 10px 12px; display: grid; gap: 2px; list-style: none; }
+details.prac summary::-webkit-details-marker { display: none; }
+details.prac summary .pn { font-weight: 600; font-size: 14.5px; }
+details.prac summary .pm { font-size: 12.5px; color: var(--muted); }
+details.prac[open] summary { border-bottom: 1px solid var(--line); }
+details.prac ol { margin: 10px 12px 10px; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+details.prac .btn { margin: 0 12px 12px; }
+h3.grp { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-size: 17px; margin: 16px 0 8px; color: var(--muted); }
+h3.grp:first-child { margin-top: 0; }
+
+/* Squads */
+.nickrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.nick { font-family: var(--font-display); font-weight: 800; font-size: 32px; letter-spacing: 0.02em; line-height: 1.1; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: inherit; font-size: 13.5px; font-weight: 500; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--field); color: var(--ink); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+#so-table td, #so-table th { white-space: nowrap; }
+#so-table tr.me td { background: color-mix(in srgb, var(--good) 10%, transparent); }
+#so-table td.nm { font-weight: 500; white-space: normal; }
+.you { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--good); margin-left: 4px; }
+#so-table tr.cheerrow td { background: var(--field); white-space: normal; }
+.cheerbtns { display: flex; flex-wrap: wrap; gap: 6px; }
+.sqinfo { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 8px; font-size: 14px; }
+.sqinfo .code { font-family: var(--font-data); font-size: 20px; letter-spacing: 0.08em; user-select: all; }
+.openitem { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.openitem small { display: block; color: var(--muted); font-size: 12.5px; }
+
+.foot { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); max-width: 80ch; }
+.foot a { color: var(--muted); }
+/* Toasts */
+.toasts { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; justify-items: center; pointer-events: none; z-index: 50; }
+.toast { pointer-events: auto; width: 100%; max-width: 420px; background: var(--ink); color: var(--bg); padding: 12px 14px; border-radius: 10px; font-size: 14px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3); }
+.toast b { font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: 0.03em; display: block; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Last Stick</h1>
+    <p>Count the cigarettes you smoke in a day, see what they cost your body, then keep a streak of days without them.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" role="tab" id="tab-calc" aria-controls="view-calc" aria-selected="true">Calculator</button>
+    <button type="button" role="tab" id="tab-streak" aria-controls="view-streak" aria-selected="false">Quit streak</button>
+    <button type="button" role="tab" id="tab-ach" aria-controls="view-ach" aria-selected="false">Achievements</button>
+    <button type="button" role="tab" id="tab-lungs" aria-controls="view-lungs" aria-selected="false">Lung care</button>
+    <button type="button" role="tab" id="tab-social" aria-controls="view-social" aria-selected="false">Squads</button>
+  </nav>
+
+  <div class="cols" id="view-calc" role="tabpanel" aria-labelledby="tab-calc">
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-you">
+        <h2 id="h-you">About you</h2>
+        <div class="fields">
+          <div class="field"><label for="age">Your age</label><input id="age" type="number" inputmode="numeric" min="14" max="100" value="30"></div>
+          <div class="field"><label for="start">Started smoking at</label><input id="start" type="number" inputmode="numeric" min="8" max="100" value="18"></div>
+          <div class="field"><label for="sex">Sex</label>
+            <select id="sex"><option value="male">Male</option><option value="female">Female</option><option value="avg">Prefer not to say</option></select>
+          </div>
+          <div class="field"><label for="life">Average life span</label><input id="life" type="number" inputmode="numeric" min="40" max="110" value="71"></div>
+          <div class="field wide"><label for="price">Price per cigarette (₹)</label><input id="price" type="number" inputmode="decimal" min="0" step="0.5" value="15"></div>
+          <div class="field wide">
+            <span class="lbl" id="depth-l">How deeply you inhale</span>
+            <div class="seg" role="radiogroup" aria-labelledby="depth-l">
+              <input type="radio" name="depth" id="d1" value="1"><label for="d1">Light</label>
+              <input type="radio" name="depth" id="d2" value="1.5" checked><label for="d2">Typical</label>
+              <input type="radio" name="depth" id="d3" value="2.2"><label for="d3">Deep</label>
+            </div>
+            <p class="hint">Pack figures come from lab machines and people draw harder. Light, typical and deep take in 1.0×, 1.5× and 2.2× the pack figures, and shift the life lost per cigarette to 0.8×, 1× and 1.25×.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-day">
+        <h2 id="h-day">Cigarettes in one day</h2>
+        <p class="example" id="example">Example day. Change the brands and counts to match yours.</p>
+        <div class="rows" id="rows"></div>
+        <button type="button" class="btn-add" id="add">+ Add another brand</button>
+      </section>
+    </div>
+
+    <div class="stack" id="results" aria-live="polite">
+      <section class="panel hero" aria-labelledby="headline">
+        <p class="kicker">If you keep smoking at this rate</p>
+        <h2 class="big" id="headline"></h2>
+        <p class="sub" id="sub"></p>
+        <div class="cig" id="cig" role="img" aria-label="Life as a burning cigarette">
+          <div class="filter" id="b-filter"></div><div class="paper" id="b-paper"></div><div class="ember"></div><div class="ash" id="b-ash"></div>
+        </div>
+        <div class="scale"><span>0</span><span id="sc-now"></span><span id="sc-end"></span><span id="sc-base"></span></div>
+        <ul class="legend" id="legend"></ul>
+        <p class="msg" id="msg" hidden></p>
+      </section>
+
+      <section class="panel" aria-labelledby="h-in">
+        <h2 id="h-in">What goes in, per day</h2>
+        <p class="hint" id="depth-note" style="margin:-6px 0 14px"></p>
+        <div class="metrics" id="metrics"></div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Brand</th><th class="r">Sticks</th><th class="r">Nicotine mg</th><th class="r">Tar mg</th><th class="r">CO mg</th></tr></thead>
+          <tbody id="tbody"></tbody><tfoot id="tfoot"></tfoot>
+        </table></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-q">
+        <h2 id="h-q">If you quit today</h2>
+        <div class="quit" id="quit"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-c">
+        <h2 id="h-c">What it costs</h2>
+        <dl class="costs" id="costs"></dl>
+      </section>
+
+      <section class="panel notes" aria-labelledby="h-n">
+        <h2 id="h-n">How this is worked out</h2>
+        <ul>
+          <li>Each cigarette is taken to cost about 20 minutes of life at typical inhalation, the average from a 2024 study in the journal Addiction (<a href="https://euronews.com/health/2025/01/08/smoking-a-single-cigarette-can-decrease-your-life-expectancy-by-20-minutes" target="_blank" rel="noopener">news coverage</a>). Light and deep inhalation scale that by 0.8× and 1.25×, which is a rough adjustment of mine. Life lost is capped at 15 years because an average stops being reliable at very heavy use.</li>
+          <li>The projection assumes you smoked today's amount every day since you started and keep going. Real outcomes vary a lot with genes, diet, and other health factors.</li>
+          <li>Nicotine, tar and carbon monoxide per stick are typical machine-rated values for each type, not measurements of your pack. If your pack lists its own figures, pick "Other" and enter them.</li>
+          <li>This is an estimate to help you decide, not medical advice.</li>
+        </ul>
+        <p class="help">Ready to stop? India's National Tobacco Quitline is free: <b>1800-11-2356</b>. <a href="https://ntqls.in/online-support.php" target="_blank" rel="noopener">Online support</a></p>
+      </section>
+    </div>
+  </div>
+
+  <div class="cols" id="view-streak" role="tabpanel" aria-labelledby="tab-streak" hidden>
+    <div class="stack">
+      <section class="panel streak" aria-labelledby="h-streak">
+        <h2 id="h-streak">Smoke-free streak</h2>
+
+        <div id="s-off">
+          <p class="recap" id="s-last" hidden></p>
+          <p class="kicker">No streak running</p>
+          <details class="back">
+            <summary>Already quit earlier? Set the start time</summary>
+            <div class="field"><label for="since">Last cigarette</label><input id="since" type="datetime-local"></div>
+          </details>
+          <button type="button" class="btn primary" id="s-start">Start my streak</button>
+          <p class="basenote" id="s-base-off"></p>
+        </div>
+
+        <div id="s-on" hidden>
+          <p class="kicker">Smoke-free for</p>
+          <div class="units" role="timer" aria-label="Time since your last cigarette">
+            <div class="unit"><b id="u-d">0</b><span>days</span></div>
+            <div class="unit"><b id="u-h">00</b><span>hours</span></div>
+            <div class="unit"><b id="u-m">00</b><span>min</span></div>
+            <div class="unit"><b id="u-s">00</b><span>sec</span></div>
+          </div>
+          <p class="since" id="s-since"></p>
+          <div class="nextms" id="s-next"></div>
+          <div class="actions">
+            <button type="button" class="btn warn" id="s-slip">I smoked</button>
+          </div>
+          <div class="confirm" id="s-confirm" hidden>
+            <span>This ends your streak and starts the count from zero. Your longest streak stays saved.</span>
+            <div class="actions">
+              <button type="button" class="btn warn small" id="s-yes">Yes, end my streak</button>
+              <button type="button" class="btn small" id="s-no">Keep going</button>
+            </div>
+          </div>
+          <p class="basenote" id="s-base-on"></p>
+          <button type="button" class="btn small" id="s-rebase" style="margin-top:8px">Update from calculator</button>
+        </div>
+
+        <dl class="rec">
+          <div><dt>Longest streak</dt><dd id="r-best">0 min</dd></div>
+          <div><dt>Slips</dt><dd id="r-slips">0</dd></div>
+        </dl>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-kept">
+        <h2 id="h-kept">What you have kept</h2>
+        <div id="s-stats"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-proj">
+        <h2 id="h-proj">Staying on track</h2>
+        <p class="hint" style="margin:-6px 0 4px">What you keep if you stay smoke-free, based on your day in the calculator.</p>
+        <div class="tablewrap"><table id="s-proj"></table></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-body">
+        <h2 id="h-body">Your body, step by step</h2>
+        <ul class="ms" id="s-ms"></ul>
+        <p class="hint" style="margin-top:10px">Commonly cited recovery timelines from public health agencies. Individual recovery varies.</p>
+      </section>
+    </div>
+  </div>
+
+  <div class="cols" id="view-ach" role="tabpanel" aria-labelledby="tab-ach" hidden>
+    <div class="stack">
+      <section class="panel hero" aria-labelledby="h-lvl">
+        <p class="kicker" id="lv-kicker">Level 1</p>
+        <h2 class="big" id="h-lvl">First Breath</h2>
+        <div class="bigpts"><b id="lv-pts">0</b><span>points</span></div>
+        <div class="track good"><span id="lv-bar"></span></div>
+        <p class="hint" id="lv-next" style="margin-top:8px"></p>
+        <dl class="rec" id="lv-brk"></dl>
+      </section>
+      <section class="panel" aria-labelledby="h-recent">
+        <h2 id="h-recent">Latest unlocks</h2>
+        <ul class="recent" id="a-recent"></ul>
+      </section>
+    </div>
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-ach">
+        <h2 id="h-ach">All achievements</h2>
+        <p class="hint" id="a-count" style="margin:-6px 0 6px"></p>
+        <div id="a-list"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="cols" id="view-lungs" role="tabpanel" aria-labelledby="tab-lungs" hidden>
+    <div class="stack">
+      <section class="panel breath" aria-labelledby="h-breath">
+        <h2 id="h-breath">Guided breathing</h2>
+        <div class="fields">
+          <div class="field"><label for="br-pattern">Pattern</label>
+            <select id="br-pattern"><option value="belly">Belly breathing</option><option value="pursed">Pursed-lip</option><option value="box">Box breathing</option><option value="s478">4-7-8</option></select>
+          </div>
+          <div class="field"><label for="br-len">Length</label>
+            <select id="br-len"><option value="1">1 minute</option><option value="3" selected>3 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option></select>
+          </div>
+        </div>
+        <p class="hint" id="br-desc" style="margin-top:10px"></p>
+        <div class="orb-wrap" aria-live="off"><div class="orb" id="orb"><div class="orb-text"><b id="orb-phase">Ready</b><span id="orb-count">&nbsp;</span></div></div></div>
+        <p class="hint" id="br-left" style="text-align:center;min-height:1.5em"></p>
+        <button type="button" class="btn primary" id="br-go">Start</button>
+        <p class="hint" style="margin-top:10px">Cravings usually peak and fade within a few minutes. A few slow rounds of breathing is a good way to ride one out.</p>
+      </section>
+      <section class="panel" aria-labelledby="h-today">
+        <h2 id="h-today">Your practice</h2>
+        <dl class="rec" style="border-top:0;margin-top:0;padding-top:0" id="pr-stats"></dl>
+        <div class="dots" id="pr-dots" aria-label="Practice in the last seven days"></div>
+        <p class="hint" style="margin-top:10px">Each logged session earns 5 points, up to 3 sessions a day.</p>
+      </section>
+    </div>
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-ex">
+        <h2 id="h-ex">Exercise</h2>
+        <div id="ex-list" class="praclist"></div>
+      </section>
+      <section class="panel" aria-labelledby="h-yo">
+        <h2 id="h-yo">Yoga and pranayama</h2>
+        <div id="yo-list"></div>
+        <p class="hint" style="margin-top:12px">Stop if you feel dizzy, get chest pain or become unusually breathless. If you have asthma, COPD, a heart condition, are pregnant or are recovering from surgery, check with a doctor first. Skip forceful breathing practices such as Kapalabhati unless a teacher guides you. This is general wellness information, not medical advice.</p>
+      </section>
+    </div>
+  </div>
+
+  <div class="cols" id="view-social" role="tabpanel" aria-labelledby="tab-social" hidden>
+    <div class="stack">
+      <section class="panel" id="so-off" hidden aria-labelledby="h-off">
+        <h2 id="h-off">Squads</h2>
+        <p>Squads connect you with other people quitting and rank points in a friendly weekly challenge. They need the online web app, so they are switched off in this version.</p>
+        <p class="hint">Open the web app at <b>amarb125.github.io/last-stick</b> to join.</p>
+      </section>
+      <section class="panel" id="so-intro" hidden aria-labelledby="h-intro">
+        <h2 id="h-intro">Quit together</h2>
+        <p style="margin:0 0 12px">Join squads of other people quitting, earn points for every milestone and cheer each other on. There is no chat and no typing: you appear under a generated name with your points and streak.</p>
+        <p class="lbl" style="margin:0 0 6px">Your name</p>
+        <div class="nickrow"><b class="nick" id="so-nick"></b><button type="button" class="btn small" id="so-reroll">New name</button></div>
+        <label class="check"><input type="checkbox" id="so-age"> I am 18 or older</label>
+        <label class="check"><input type="checkbox" id="so-public-new"> Show me on the public board</label>
+        <button type="button" class="btn primary" id="so-join" disabled>Join Squads</button>
+        <ul class="hint list">
+          <li>Shared: your generated name, points and current streak length.</li>
+          <li>Not shared: your cigarettes, spending, health numbers, or anything about who you are.</li>
+          <li>Points are self-reported, so treat the boards as friendly competition.</li>
+        </ul>
+      </section>
+      <section class="panel" id="so-me" hidden aria-labelledby="h-me">
+        <h2 id="h-me">You</h2>
+        <p class="nick" id="m-nick" style="margin:0 0 4px"></p>
+        <dl class="rec" style="border-top:0;margin-top:8px;padding-top:0">
+          <div><dt>Level</dt><dd id="m-level"></dd></div>
+          <div><dt>Board points</dt><dd id="m-total"></dd></div>
+          <div><dt>This week</dt><dd id="m-week"></dd></div>
+          <div><dt>Cheers sent</dt><dd id="m-cheers"></dd></div>
+        </dl>
+        <label class="check"><input type="checkbox" id="so-public"> Show me on the public board</label>
+        <div id="so-tools" hidden style="display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px">
+          <button type="button" class="btn small" id="so-export">Download my data</button>
+          <button type="button" class="btn small warn" id="so-delete">Delete my profile</button>
+        </div>
+        <details class="back">
+          <summary>Back up or restore your profile</summary>
+          <p class="hint" style="margin-top:8px">This code is the key to your profile. Keep it private. Paste it on another device to restore.</p>
+          <p><b id="so-secret" class="mono"></b></p>
+          <button type="button" class="btn small" id="so-copy-secret">Copy code</button>
+          <div class="field"><label for="so-restore">Restore from a code</label><input id="so-restore" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+          <button type="button" class="btn small" id="so-restore-go" style="margin-top:8px">Restore</button>
+        </details>
+      </section>
+      <section class="panel" id="so-actions" hidden aria-labelledby="h-act">
+        <h2 id="h-act">Find your squad</h2>
+        <div class="field"><label for="so-code">Join with a code</label><input id="so-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH"></div>
+        <button type="button" class="btn small" id="so-codego" style="margin:8px 0 18px">Join squad</button>
+        <p class="lbl" style="margin:0 0 6px">Start a new squad</p>
+        <div class="fields">
+          <div class="field"><label for="so-theme">Focus</label>
+            <select id="so-theme"><option value="any">Everyone</option><option value="new">Just started</option><option value="steady">Past a month</option><option value="fitness">Fitness focus</option></select>
+          </div>
+          <div class="field"><span class="lbl">Visibility</span><label class="check" style="margin:8px 0 0"><input type="checkbox" id="so-open"> Open to anyone</label></div>
+        </div>
+        <button type="button" class="btn small" id="so-create" style="margin:10px 0 18px">Create squad</button>
+        <p class="lbl" style="margin:0 0 6px">Open squads</p>
+        <button type="button" class="btn small" id="so-browse">Browse open squads</button>
+        <div id="so-open-list"></div>
+      </section>
+    </div>
+    <div class="stack">
+      <p class="msg" id="so-msg" role="status" hidden></p>
+      <section class="panel" id="so-board" hidden aria-labelledby="h-board">
+        <h2 id="h-board">Leaderboard</h2>
+        <div class="chips" id="so-chips"></div>
+        <div class="chips" id="so-by" style="margin-top:10px">
+          <button type="button" class="chip" data-by="week" aria-pressed="true">This week</button>
+          <button type="button" class="chip" data-by="total" aria-pressed="false">All time</button>
+        </div>
+        <p class="hint" id="so-reset" style="margin-top:8px"></p>
+        <div class="tablewrap"><table id="so-table"></table></div>
+        <div id="so-sqinfo"></div>
+      </section>
+      <section class="panel" id="so-inbox" hidden aria-labelledby="h-inbox">
+        <h2 id="h-inbox">Cheers for you</h2>
+        <ul class="ms" id="so-cheers"></ul>
+      </section>
+    </div>
+  </div>
+
+  <footer class="foot" id="foot">
+    <p><b>Estimates, not medical advice.</b> Intake figures use typical machine-tested yields per cigarette and your inhalation setting, so real intake varies. Life figures use a rule of thumb of about 20 minutes of life per cigarette, scaled by inhalation depth and capped, based on published population studies of smokers. Recovery timelines are commonly cited by public health agencies. Talk to a doctor before changing medication or starting exercise.</p>
+    <p><b>Need help quitting?</b> In India you can call the National Tobacco Quitline at 1800-11-2356 (please verify the number on the official site) or ask your doctor about nicotine replacement and counselling.</p>
+    <p id="legal" hidden><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
+  </footer>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+/*LOGIC*/
+var MIN_PER_CIG = 20, MAX_LOSS_YEARS = 15, MIN_PER_YEAR = 525600, DAY_MS = 86400000;
+var BRANDS = [
+  { id: 'classic-connect', name: 'Classic Connect (capsule)', tar: 10, nic: 0.8, co: 10 },
+  { id: 'classic-regular', name: 'Classic Regular', tar: 14, nic: 1.0, co: 12 },
+  { id: 'marlboro-compact', name: 'Marlboro Compact', tar: 8, nic: 0.7, co: 8 },
+  { id: 'marlboro-advance', name: 'Marlboro Advance', tar: 7, nic: 0.6, co: 7 },
+  { id: 'marlboro-double-burst', name: 'Marlboro Double Burst', tar: 8, nic: 0.7, co: 8 },
+  { id: 'finetouch', name: 'Fine Touch', tar: 6, nic: 0.5, co: 6 },
+  { id: 'gold-flake-kings', name: 'Gold Flake Kings', tar: 14, nic: 1.0, co: 12 },
+  { id: 'wills-navy-cut', name: 'Wills Navy Cut', tar: 16, nic: 1.2, co: 13 },
+  { id: 'four-square', name: 'Four Square', tar: 14, nic: 1.0, co: 12 },
+  { id: 'custom', name: 'Other (enter yields)', tar: 10, nic: 0.8, co: 10 }
+];
+var BASE_LIFE = { male: 71, female: 73, avg: 72 };
+var MILESTONES = [
+  { ms: 20 * 60000, t: '20 minutes', x: 'Heart rate and blood pressure come down.' },
+  { ms: 12 * 3600000, t: '12 hours', x: 'Carbon monoxide in your blood drops to a normal level.' },
+  { ms: 14 * DAY_MS, t: '2 weeks', x: 'Circulation improves and walking gets easier.' },
+  { ms: 30 * DAY_MS, t: '1 month', x: 'Coughing and shortness of breath start to ease.' },
+  { ms: 365 * DAY_MS, t: '1 year', x: "Heart disease risk falls to about half a smoker's." },
+  { ms: 5 * 365 * DAY_MS, t: '5 years', x: "Stroke risk keeps falling toward a non-smoker's." },
+  { ms: 10 * 365 * DAY_MS, t: '10 years', x: "Lung cancer death risk is about half a smoker's." },
+  { ms: 15 * 365 * DAY_MS, t: '15 years', x: "Heart disease risk is close to a non-smoker's." }
+];
+
+function brandById(id) { for (var i = 0; i < BRANDS.length; i++) if (BRANDS[i].id === id) return BRANDS[i]; return BRANDS[0]; }
+
+function yieldsFor(row) {
+  var b = brandById(row.brand);
+  if (row.brand === 'custom') {
+    var c = row.custom || {};
+    return { name: 'Your brand', tar: +c.tar || 0, nic: +c.nic || 0, co: +c.co || 0 };
+  }
+  return { name: b.name, tar: b.tar, nic: b.nic, co: b.co };
+}
+
+function intake(rows, depth) {
+  var out = { sticks: 0, nic: 0, tar: 0, co: 0, lines: [] };
+  rows.forEach(function (r) {
+    var n = Math.max(0, +r.count || 0), y = yieldsFor(r);
+    var l = { name: y.name, n: n, nic: y.nic * depth * n, tar: y.tar * depth * n, co: y.co * depth * n };
+    out.lines.push(l);
+    out.sticks += n; out.nic += l.nic; out.tar += l.tar; out.co += l.co;
+  });
+  return out;
+}
+
+function depthFactor(d) { d = +d; return d <= 1.2 ? 0.8 : (d <= 1.8 ? 1 : 1.25); }
+function minPerStick(d) { return MIN_PER_CIG * depthFactor(d); }
+
+function project(p, perDay, minPer) {
+  var base = p.life;
+  var start = Math.min(p.start, p.age);
+  var k = perDay * 365 * (minPer || MIN_PER_CIG) / MIN_PER_YEAR;   // years of life lost per year of smoking
+  var rawEnd = (base + k * start) / (1 + k);                       // age at death when the loss shortens the smoking years too
+  var rawLoss = base - rawEnd;
+  var scale = rawLoss > MAX_LOSS_YEARS ? MAX_LOSS_YEARS / rawLoss : 1;   // keeps both scenarios in proportion under the cap
+  var end = Math.min(base, Math.max(base - rawLoss * scale, p.age + 1));
+  var yrsSoFar = Math.max(0, p.age - start);
+  var quitEnd = Math.min(base, Math.max(base - k * yrsSoFar * scale, p.age + 1));
+  return { base: base, end: end, lost: base - end, quitEnd: quitEnd, quitLoss: base - quitEnd, gain: Math.max(0, quitEnd - end), k: k, pastBase: p.age >= base };
+}
+
+function makeBase(tk, price, depth) {
+  return { sticks: tk.sticks, nic: tk.nic, tar: tk.tar, co: tk.co, price: +price || 0, minPer: minPerStick(depth), depth: +depth };
+}
+function streakStats(base, ms) {
+  var d = Math.max(0, ms) / DAY_MS;
+  return { sticks: base.sticks * d, mins: base.sticks * base.minPer * d, nic: base.nic * d, tar: base.tar * d, co: base.co * d, money: base.sticks * base.price * d };
+}
+function splitDur(ms) {
+  var s = Math.floor(Math.max(0, ms) / 1000);
+  return { d: Math.floor(s / 86400), h: Math.floor(s % 86400 / 3600), m: Math.floor(s % 3600 / 60), s: s % 60 };
+}
+var H_MS = 3600000;
+function A(id, cat, kind, metric, target, pts, title, desc) { return { id: id, cat: cat, kind: kind, metric: metric, target: target, pts: pts, title: title, desc: desc }; }
+var ACHIEVEMENTS = [
+  A('start_calc', 'Getting started', 'misc', 'calc', 1, 10, 'Know your numbers', 'Use the calculator once.'),
+  A('s20m', 'Smoke-free streak', 'streak', 'streak', 20 * 60000, 10, 'First 20 minutes', 'Go 20 minutes without a cigarette.'),
+  A('s12h', 'Smoke-free streak', 'streak', 'streak', 12 * H_MS, 20, 'Twelve clear hours', 'Half a day smoke-free.'),
+  A('s1d', 'Smoke-free streak', 'streak', 'streak', DAY_MS, 40, 'One full day', 'Twenty-four hours smoke-free.'),
+  A('s3d', 'Smoke-free streak', 'streak', 'streak', 3 * DAY_MS, 60, 'Three days', 'Three days in a row.'),
+  A('s1w', 'Smoke-free streak', 'streak', 'streak', 7 * DAY_MS, 120, 'One week', 'A full week smoke-free.'),
+  A('s2w', 'Smoke-free streak', 'streak', 'streak', 14 * DAY_MS, 180, 'Two weeks', 'Fourteen days in a row.'),
+  A('s1m', 'Smoke-free streak', 'streak', 'streak', 30 * DAY_MS, 350, 'One month', 'Thirty days smoke-free.'),
+  A('s3m', 'Smoke-free streak', 'streak', 'streak', 90 * DAY_MS, 700, 'Three months', 'A quarter of a year.'),
+  A('s6m', 'Smoke-free streak', 'streak', 'streak', 182 * DAY_MS, 1200, 'Six months', 'Half a year smoke-free.'),
+  A('s1y', 'Smoke-free streak', 'streak', 'streak', 365 * DAY_MS, 2500, 'One year', 'A full year smoke-free.'),
+  A('c50', 'Cigarettes skipped', 'count', 'sticks', 50, 30, '50 skipped', 'Skip 50 cigarettes in total.'),
+  A('c200', 'Cigarettes skipped', 'count', 'sticks', 200, 80, '200 skipped', 'Skip 200 cigarettes in total.'),
+  A('c500', 'Cigarettes skipped', 'count', 'sticks', 500, 160, '500 skipped', 'Skip 500 cigarettes in total.'),
+  A('c1000', 'Cigarettes skipped', 'count', 'sticks', 1000, 300, '1,000 skipped', 'Skip 1,000 cigarettes in total.'),
+  A('c5000', 'Cigarettes skipped', 'count', 'sticks', 5000, 800, '5,000 skipped', 'Skip 5,000 cigarettes in total.'),
+  A('m500', 'Money saved', 'count', 'money', 500, 30, '₹500 saved', 'Keep ₹500 in your pocket.'),
+  A('m2000', 'Money saved', 'count', 'money', 2000, 80, '₹2,000 saved', 'Keep ₹2,000 in your pocket.'),
+  A('m5000', 'Money saved', 'count', 'money', 5000, 160, '₹5,000 saved', 'Keep ₹5,000 in your pocket.'),
+  A('m10000', 'Money saved', 'count', 'money', 10000, 300, '₹10,000 saved', 'Keep ₹10,000 in your pocket.'),
+  A('m50000', 'Money saved', 'count', 'money', 50000, 900, '₹50,000 saved', 'Keep ₹50,000 in your pocket.'),
+  A('l1d', 'Life regained', 'count', 'lifemins', 1440, 60, 'A day of life', 'Regain one day of life.'),
+  A('l1w', 'Life regained', 'count', 'lifemins', 10080, 200, 'A week of life', 'Regain one week of life.'),
+  A('l1m', 'Life regained', 'count', 'lifemins', 43200, 500, 'A month of life', 'Regain one month of life.'),
+  A('p1', 'Lung care', 'practice', 'sessions', 1, 10, 'First practice', 'Log your first lung care session.'),
+  A('p7', 'Lung care', 'practice', 'sessions', 7, 50, 'Seven sessions', 'Log 7 sessions.'),
+  A('p30', 'Lung care', 'practice', 'sessions', 30, 150, 'Thirty sessions', 'Log 30 sessions.'),
+  A('pcats', 'Lung care', 'practice', 'cats', 3, 40, 'All three kinds', 'Try breathing, exercise and yoga.'),
+  A('pd3', 'Lung care', 'practice', 'pdays', 3, 40, 'Three days running', 'Practise three days in a row.'),
+  A('pd7', 'Lung care', 'practice', 'pdays', 7, 100, 'A week of practice', 'Practise seven days in a row.'),
+  A('comeback', 'Resilience', 'count', 'comeback', 1, 50, 'Back on track', 'Restart after a slip and reach 24 hours again.'),
+  A('social_join', 'Squads', 'social', 'joined', 1, 20, 'Join a squad', 'Be part of a squad.'),
+  A('social_cheer', 'Squads', 'social', 'cheers', 1, 10, 'First cheer', 'Cheer on a squad mate.'),
+  A('social_cheer10', 'Squads', 'social', 'cheers', 10, 50, 'Ten cheers', 'Send 10 cheers.')
+];
+var LEVELS = [
+  { pts: 0, name: 'First Breath' }, { pts: 100, name: 'Fresh Air' }, { pts: 300, name: 'Deep Breath' }, { pts: 700, name: 'Open Lungs' },
+  { pts: 1500, name: 'Mountain Air' }, { pts: 3000, name: 'Clear Sky' }, { pts: 6000, name: 'Summit' }
+];
+function levelFor(p) {
+  var i = 0;
+  for (var k = 0; k < LEVELS.length; k++) if (p >= LEVELS[k].pts) i = k;
+  return { i: i, cur: LEVELS[i], next: LEVELS[i + 1] || null };
+}
+function achValue(a, c) { return a.kind === 'streak' ? Math.max(c.elapsed || 0, c.best || 0) : (c[a.metric] || 0); }
+function dayKey(ms) {
+  var d = new Date(ms);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function practiceByDay(log) { var m = {}; log.forEach(function (e) { var k = dayKey(e.t); m[k] = (m[k] || 0) + 1; }); return m; }
+function practicePoints(log) { var m = practiceByDay(log), s = 0; for (var k in m) s += Math.min(3, m[k]) * 5; return s; }
+function practiceKeys(log) {
+  var m = practiceByDay(log), out = [];
+  for (var k in m) for (var n = 1; n <= Math.min(3, m[k]); n++) out.push('practice:' + k + ':' + n);
+  return out;
+}
+function practiceDayStreak(log, now) {
+  var m = practiceByDay(log), n = 0, t = now;
+  if (!m[dayKey(t)]) t -= DAY_MS;
+  while (m[dayKey(t)]) { n++; t -= DAY_MS; }
+  return n;
+}
+var ADJ = ['Brave','Calm','Bright','Steady','Bold','Gentle','Swift','Mighty','Quiet','Lucky','Sunny','Clever','Fierce','Noble','Proud','Hardy','Kind','Keen','Merry','Nimble','Patient','Plucky','Rising','Serene','Sturdy','Vivid','Wise','Zesty','Amber','Cobalt','Jade','Crimson','Golden','Silver','Misty','Breezy'];
+var ANIMAL = ['Otter','Heron','Falcon','Panda','Tiger','Lynx','Dolphin','Eagle','Fox','Koala','Orca','Owl','Raven','Seal','Swan','Wolf','Yak','Zebra','Bison','Crane','Gecko','Hare','Ibis','Jaguar','Kiwi','Lemur','Moose','Newt','Osprey','Puffin','Quokka','Robin','Stork','Tapir','Whale','Wren'];
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function genNick() { return pick(ADJ) + pick(ANIMAL) + (10 + Math.floor(Math.random() * 90)); }
+function genSquad() { return pick(ADJ) + ' ' + pick(ANIMAL) + ' Squad'; }
+/*END*/
+
+function $(id) { return document.getElementById(id); }
+var KEY = 'last-stick-v1', TABKEY = 'last-stick-tab';
+var DEFAULT_STREAK = { start: null, best: 0, slips: 0, base: null, last: null };
+var state = {
+  p: { age: 30, start: 18, sex: 'male', life: 71, lifeEdited: false, price: 15, depth: 1.5 },
+  rows: [{ brand: 'classic-connect', count: 6 }, { brand: 'marlboro-compact', count: 4 }],
+  touched: false,
+  streak: Object.assign({}, DEFAULT_STREAK),
+  ach: {},
+  practice: { log: [] },
+  social: { secret: null, id: null, nick: null, sent: {}, cheers: 0, nsq: 0 }
+};
+var store = { ref: null };
+var curTab = 'calc';
+
+function normalize() {
+  clampProfile();
+  state.streak = Object.assign({}, DEFAULT_STREAK, state.streak || {});
+  state.streak.bank = Object.assign({ sticks: 0, mins: 0, money: 0 }, state.streak.bank || {});
+  state.ach = state.ach || {};
+  state.practice = Object.assign({ log: [] }, state.practice || {});
+  if (!Array.isArray(state.practice.log)) state.practice.log = [];
+  state.social = Object.assign({ secret: null, id: null, nick: null, sent: {}, cheers: 0, nsq: 0 }, state.social || {});
+  state.social.sent = state.social.sent || {};
+}
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (s && s.p && s.rows && s.rows.length) state = s;
+  } catch (e) {}
+  normalize();
+}
+
+/* Saving: browser storage always, plus the page's private database when this viewer has one. Writes happen after a person acts, never on load. */
+var saveTimer = null, writing = false, dirty = false;
+function persist() {
+  state.updated = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  if (store.ref) { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 600); }
+}
+function flush() {
+  if (writing || !dirty || !store.ref) return;
+  writing = true; dirty = false;
+  var body = { state: JSON.parse(JSON.stringify(state)) };
+  store.ref.set(body).catch(function () {}).then(function () { writing = false; if (dirty) flush(); });
+}
+document.addEventListener('visibilitychange', function () { if (document.hidden && dirty) { clearTimeout(saveTimer); flush(); } });
+
+function initStore() {
+  var c = window.claude;
+  if (!c || !c.use) return;
+  Promise.all([c.use('db'), c.use('user')]).then(function (r) {
+    var db = r[0], user = r[1];
+    if (!db || !user) return null;
+    return user.id().then(function (id) {
+      if (!id) return null;
+      store.ref = db.doc('data/users/' + id + '/app');
+      return store.ref.get();
+    });
+  }).then(function (snap) {
+    if (!snap) return;
+    var d = snap.exists ? snap.data() : null, remote = d && d.state;
+    if (remote && remote.p && remote.rows && (remote.updated || 0) >= (state.updated || 0)) {
+      state = JSON.parse(JSON.stringify(remote)); normalize();
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+      applyAll();
+    } else if (state.updated) { dirty = true; flush(); }
+  }).catch(function () {});
+}
+
+function fmt(n, d) { return (+n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function dur(mins) {
+  var h = Math.floor(mins / 60), m = Math.round(mins - h * 60);
+  if (h && m) return h + ' h ' + m + ' min';
+  return h ? h + ' h' : m + ' min';
+}
+function yrs(n) { return fmt(n, 1) + (Math.abs(n - 1) < 0.05 ? ' year' : ' years'); }
+function durMs(ms) {
+  var t = splitDur(ms);
+  var y = Math.floor(t.d / 365), dd = t.d - y * 365;
+  if (y) return y + ' y ' + dd + ' d';
+  if (t.d) return t.d + ' d ' + t.h + ' h';
+  if (t.h) return t.h + ' h ' + t.m + ' min';
+  if (t.m) return t.m + ' min';
+  return t.s + ' s';
+}
+function lifeMins(mins) {
+  if (mins >= MIN_PER_YEAR) return fmt(mins / MIN_PER_YEAR, 1) + ' years';
+  return durMs(mins * 60000);
+}
+function mass(mg, dp) {
+  if (mg >= 1000) return { v: fmt(mg / 1000, mg >= 100000 ? 0 : 2), u: 'g' };
+  return { v: fmt(mg, dp == null ? (mg < 10 ? 1 : 0) : dp), u: 'mg' };
+}
+
+function renderRows() {
+  var el = $('rows'); el.innerHTML = '';
+  state.rows.forEach(function (r, i) {
+    var d = document.createElement('div'); d.className = 'row'; d.dataset.i = i;
+    var opts = BRANDS.map(function (b) { return '<option value="' + b.id + '"' + (b.id === r.brand ? ' selected' : '') + '>' + b.name + '</option>'; }).join('');
+    var c = r.custom || { tar: 10, nic: 0.8, co: 10 };
+    d.innerHTML =
+      '<div class="row-main">' +
+      '<select aria-label="Cigarette type" data-k="brand">' + opts + '</select>' +
+      '<div class="stepper"><button type="button" data-a="dec" aria-label="One fewer">−</button>' +
+      '<input type="number" inputmode="numeric" min="0" max="99" aria-label="Number smoked" data-k="count" value="' + (r.count == null ? 0 : r.count) + '">' +
+      '<button type="button" data-a="inc" aria-label="One more">+</button></div>' +
+      '<button type="button" class="x" data-a="del" aria-label="Remove this brand">×</button></div>' +
+      (r.brand === 'custom' ?
+        '<div class="custom">' +
+        '<div class="field"><label>Tar mg</label><input type="number" inputmode="decimal" step="0.1" min="0" data-k="c-tar" value="' + c.tar + '"></div>' +
+        '<div class="field"><label>Nicotine mg</label><input type="number" inputmode="decimal" step="0.1" min="0" data-k="c-nic" value="' + c.nic + '"></div>' +
+        '<div class="field"><label>CO mg</label><input type="number" inputmode="decimal" step="0.1" min="0" data-k="c-co" value="' + c.co + '"></div>' +
+        '</div>' : '');
+    el.appendChild(d);
+  });
+}
+
+function touch() { if (!state.touched) { state.touched = true; $('example').hidden = true; } }
+var DEPTH_NAMES = { '1': 'light', '1.5': 'typical', '2.2': 'deep' };
+
+function renderResults() {
+  var p = state.p, depth = +p.depth, minPer = minPerStick(depth);
+  var tk = intake(state.rows, depth);
+  var pr = project({ age: p.age, start: p.start, life: p.life }, tk.sticks, minPer);
+
+  var none = tk.sticks === 0;
+  $('headline').innerHTML = none ? 'No cigarettes, no loss.' :
+    'You would live to about ' + Math.round(pr.end) + '. That is <span class="lost">' + yrs(pr.lost) + '</span> short.';
+  $('sub').textContent = none ? 'Enter how many you smoke in a day to see the effect.' :
+    tk.sticks + ' cigarettes a day takes about ' + dur(tk.sticks * minPer) + ' of life every day, measured against an average life span of ' + p.life + '.';
+  var span = pr.base, nowAge = Math.min(p.age, pr.end);
+  $('b-filter').style.flex = '0 0 ' + (nowAge / span * 100) + '%';
+  $('b-paper').style.flex = '1 1 0';
+  $('b-ash').style.flex = '0 0 ' + (pr.lost / span * 100) + '%';
+  $('sc-now').textContent = 'now ' + p.age;
+  $('sc-end').textContent = none ? '' : 'burns out ' + Math.round(pr.end);
+  $('sc-base').textContent = p.life;
+  $('legend').innerHTML =
+    '<li><i style="background:var(--filter)"></i><span class="v">' + p.age + ' years</span><span class="n">Lived so far</span></li>' +
+    '<li><i style="background:var(--paper);border:1px solid var(--line)"></i><span class="v">' + yrs(Math.max(0, pr.end - p.age)) + '</span><span class="n">Left at this rate</span></li>' +
+    '<li><i style="background:var(--ash)"></i><span class="v">' + yrs(pr.lost) + '</span><span class="n">Lost to smoking</span></li>';
+  var msg = $('msg');
+  if (pr.pastBase) { msg.hidden = false; msg.textContent = 'You are already past the average life span, so the model shows no loss. Treat the numbers below as intake only.'; }
+  else if (pr.lost >= MAX_LOSS_YEARS - 0.01) { msg.hidden = false; msg.textContent = 'The estimate is capped at ' + MAX_LOSS_YEARS + ' years. The real figure could be higher or lower.'; }
+  else msg.hidden = true;
+
+  $('depth-note').textContent = 'At ' + (DEPTH_NAMES[String(depth)] || 'your') + ' inhalation: ' + fmt(depth, 1) + '× the pack figures, ' + fmt(minPer, 0) + ' minutes of life per cigarette.';
+  var tspY = tk.tar * 365 / 1000 / 5;
+  $('metrics').innerHTML =
+    metric('Nicotine', tk.nic, 'mg', tk.nic * 365 / 1000, 'g a year', 'var(--nic)', 'Reaches the brain in seconds and drives the craving.', 1) +
+    metric('Tar', tk.tar, 'mg', tk.tar * 365 / 1000, 'g a year', 'var(--tar)', 'About ' + fmt(tspY, 1) + ' teaspoons a year coat the lungs.', 0) +
+    metric('Carbon monoxide', tk.co, 'mg', tk.co * 365 / 1000, 'g a year', 'var(--co)', 'Binds to red blood cells over 200 times more strongly than oxygen.', 0);
+
+  $('tbody').innerHTML = tk.lines.map(function (l) {
+    return '<tr><td>' + l.name + '</td><td class="r">' + l.n + '</td><td class="r">' + fmt(l.nic, 1) + '</td><td class="r">' + fmt(l.tar, 0) + '</td><td class="r">' + fmt(l.co, 0) + '</td></tr>';
+  }).join('');
+  $('tfoot').innerHTML = '<tr><td>Total</td><td class="r">' + tk.sticks + '</td><td class="r">' + fmt(tk.nic, 1) + '</td><td class="r">' + fmt(tk.tar, 0) + '</td><td class="r">' + fmt(tk.co, 0) + '</td></tr>';
+
+  $('quit').innerHTML =
+    qrow('Keep smoking', Math.round(pr.end), pr.end, pr.base, 'var(--ember)') +
+    qrow('Quit today', Math.round(pr.quitEnd), pr.quitEnd, pr.base, 'var(--good)') +
+    '<p class="gain">' + (none ? 'You are already at zero. Keep it there.' :
+      '<strong>+' + yrs(pr.gain) + '</strong> back by quitting today. Past smoking still counts, but every day from now stays yours. Skipping one pack of 20 returns about ' + dur(20 * minPer) + '.') + '</p>';
+
+  var perDay = tk.sticks * p.price;
+  $('costs').innerHTML =
+    cost('Per day', '₹' + fmt(perDay, 0)) + cost('Per month', '₹' + fmt(perDay * 30, 0)) +
+    cost('Per year', '₹' + fmt(perDay * 365, 0)) + cost('Sticks a year', fmt(tk.sticks * 365, 0));
+}
+function metric(name, perDay, unit, perYear, yUnit, color, note, d) {
+  return '<div class="metric" style="--c:' + color + '"><div class="name">' + name + '</div>' +
+    '<div class="num">' + fmt(perDay, d) + '<small>' + unit + '</small></div>' +
+    '<div class="year">' + fmt(perYear, perYear < 10 ? 1 : 0) + ' ' + yUnit + '</div><p>' + note + '</p></div>';
+}
+function qrow(label, ageRound, age, base, color) {
+  return '<div class="qrow"><div class="head"><span>' + label + '</span><b>about age ' + ageRound + '</b></div>' +
+    '<div class="track"><span style="width:' + (age / base * 100) + '%;background:' + color + '"></span></div></div>';
+}
+function cost(k, v) { return '<div><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
+
+/* ---- Quit streak ---- */
+function currentBase() {
+  var p = state.p, tk = intake(state.rows, +p.depth);
+  return makeBase(tk, p.price, p.depth);
+}
+function nowLocalInput() {
+  var d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 16);
+}
+function stile(name, num, unit, color, note) {
+  return '<div class="metric" style="--c:' + color + '"><div class="name">' + name + '</div>' +
+    '<div class="num">' + num + (unit ? '<small>' + unit + '</small>' : '') + '</div>' + (note ? '<p>' + note + '</p>' : '') + '</div>';
+}
+function massTile(name, mg, color, note) { var m = mass(mg); return stile(name, m.v, m.u, color, note); }
+
+function renderStreak() {
+  var s = state.streak, now = Date.now(), on = !!s.start;
+  var cur = currentBase(), b = (on && s.base) ? s.base : cur;
+  var el = on ? now - s.start : 0;
+  $('s-off').hidden = on; $('s-on').hidden = !on;
+
+  var baseTxt = b.sticks ? 'Counted against your calculator day: ' + fmt(b.sticks, 0) + ' cigarettes, ₹' + fmt(b.sticks * b.price, 0) + ' a day.' : 'Enter your daily cigarettes in the Calculator tab first.';
+  $('s-base-off').textContent = baseTxt;
+  $('s-base-on').textContent = baseTxt.replace('Counted against your calculator day', 'Counting against');
+
+  if (!on) {
+    $('s-start').disabled = !cur.sticks;
+    $('since').max = nowLocalInput();
+    if (!$('since').value) $('since').value = nowLocalInput();
+    var last = $('s-last');
+    if (s.last) {
+      last.hidden = false;
+      last.textContent = 'Your streak ended after ' + durMs(s.last.ms) + '. ' + (s.last.isBest ? 'That is your longest so far. ' : 'Your longest is ' + durMs(s.best) + '. ') +
+        'One cigarette does not erase the days you banked. Start again when you are ready.';
+    } else last.hidden = true;
+  } else {
+    var t = splitDur(el);
+    $('u-d').textContent = t.d; $('u-h').textContent = String(t.h).padStart(2, '0');
+    $('u-m').textContent = String(t.m).padStart(2, '0'); $('u-s').textContent = String(t.s).padStart(2, '0');
+    $('s-since').textContent = 'Since ' + new Date(s.start).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+    var nx = null, prev = 0;
+    for (var i = 0; i < MILESTONES.length; i++) { if (MILESTONES[i].ms > el) { nx = MILESTONES[i]; break; } prev = MILESTONES[i].ms; }
+    $('s-next').innerHTML = nx ?
+      '<div>Next: <b>' + nx.t + '</b> in ' + durMs(nx.ms - el) + '. ' + nx.x + '</div><div class="track"><span style="width:' + Math.min(100, (el - prev) / (nx.ms - prev) * 100) + '%"></span></div>' :
+      '<div>You have passed every milestone on this list.</div>';
+  }
+  $('r-best').textContent = durMs(Math.max(s.best || 0, el));
+  $('r-slips').textContent = s.slips || 0;
+
+  var st = streakStats(b, el);
+  $('s-stats').innerHTML = on ?
+    '<div class="metrics sm">' +
+    stile('Cigarettes skipped', fmt(Math.floor(st.sticks), 0), '', 'var(--ink)', '') +
+    stile('Life regained', lifeMins(st.mins), '', 'var(--good)', '20 min per cigarette at your inhalation level') +
+    massTile('Nicotine avoided', st.nic, 'var(--nic)', '') +
+    massTile('Tar avoided', st.tar, 'var(--tar)', '') +
+    massTile('Carbon monoxide avoided', st.co, 'var(--co)', '') +
+    stile('Money saved', '₹' + fmt(st.money, 0), '', 'var(--good)', '') +
+    '</div>' :
+    '<p class="hint">Start a streak to watch these numbers grow every second.</p>';
+
+  var periods = [[7, '1 week'], [30, '1 month'], [365, '1 year']];
+  var cols = periods.map(function (q) { return streakStats(b, q[0] * DAY_MS); });
+  function mrow(label, f) { return '<tr><td>' + label + '</td>' + cols.map(function (c) { return '<td class="r">' + f(c) + '</td>'; }).join('') + '</tr>'; }
+  function ms(mg) { var m = mass(mg); return m.v + ' ' + m.u; }
+  $('s-proj').innerHTML = '<thead><tr><th></th>' + periods.map(function (q) { return '<th class="r">' + q[1] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    mrow('Cigarettes skipped', function (c) { return fmt(Math.round(c.sticks), 0); }) +
+    mrow('Life regained', function (c) { return lifeMins(c.mins); }) +
+    mrow('Nicotine avoided', function (c) { return ms(c.nic); }) +
+    mrow('Tar avoided', function (c) { return ms(c.tar); }) +
+    mrow('Carbon monoxide avoided', function (c) { return ms(c.co); }) +
+    mrow('Money saved', function (c) { return '₹' + fmt(c.money, 0); }) + '</tbody>';
+
+  var firstNext = true;
+  $('s-ms').innerHTML = MILESTONES.map(function (m) {
+    var done = on && el >= m.ms, cls = '', pill = '';
+    if (done) { cls = 'done'; pill = 'Reached'; }
+    else if (on && firstNext) { cls = 'next'; pill = 'in ' + durMs(m.ms - el); firstNext = false; }
+    return '<li class="' + cls + '"><span class="t">' + m.t + '</span><span>' + m.x + '</span>' + (pill ? '<span class="pill">' + pill + '</span>' : '<span></span>') + '</li>';
+  }).join('');
+}
+
+function startStreak() {
+  var s = state.streak, now = Date.now();
+  var v = $('since').value, ts = v ? new Date(v).getTime() : now;
+  if (!isFinite(ts) || ts > now) ts = now;
+  s.start = ts; s.base = currentBase(); s.last = null;
+  persist(); renderStreak(); checkAch(); queueSync();
+}
+function endStreak() {
+  checkAch();
+  var s = state.streak, ms = Date.now() - s.start;
+  var st = streakStats(s.base || currentBase(), ms);
+  s.bank = { sticks: (s.bank.sticks || 0) + st.sticks, mins: (s.bank.mins || 0) + st.mins, money: (s.bank.money || 0) + st.money };
+  s.last = { ms: ms, isBest: ms > (s.best || 0) };
+  s.best = Math.max(s.best || 0, ms); s.slips = (s.slips || 0) + 1;
+  s.start = null; s.base = null;
+  $('s-confirm').hidden = true; $('s-slip').hidden = false;
+  $('since').value = nowLocalInput();
+  persist(); renderStreak(); queueSync();
+}
+
+/* ---- Helpers ---- */
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function shortDate(ts) { return new Date(ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); }
+function toast(title, text) {
+  var box = $('toasts'), d = document.createElement('div');
+  d.className = 'toast'; d.innerHTML = '<b>' + esc(title) + '</b>' + esc(text || '');
+  box.appendChild(d);
+  while (box.children.length > 3) box.removeChild(box.firstChild);
+  setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 4500);
+}
+
+/* ---- Achievements ---- */
+function achCtx(now) {
+  var s = state.streak, el = s.start ? now - s.start : 0, bank = s.bank || {};
+  var cur = s.start ? streakStats(s.base || currentBase(), el) : { sticks: 0, mins: 0, money: 0 };
+  var log = state.practice.log, cats = {};
+  log.forEach(function (e) { cats[e.c] = 1; });
+  return {
+    elapsed: el, best: s.best || 0,
+    sticks: (bank.sticks || 0) + cur.sticks, money: (bank.money || 0) + cur.money, lifemins: (bank.mins || 0) + cur.mins,
+    calc: state.touched ? 1 : 0,
+    sessions: log.length, cats: Object.keys(cats).length, pdays: practiceDayStreak(log, now),
+    comeback: (s.slips > 0 && el >= DAY_MS) ? 1 : 0,
+    joined: state.social.nsq > 0 ? 1 : 0, cheers: state.social.cheers || 0
+  };
+}
+function achPoints() { var t = 0; ACHIEVEMENTS.forEach(function (a) { if (state.ach[a.id]) t += a.pts; }); return t; }
+function pointsTotal() { return achPoints() + practicePoints(state.practice.log); }
+var checking = false;
+function checkAch() {
+  if (checking) return;
+  checking = true;
+  try {
+    var now = Date.now(), c = achCtx(now), got = [], before = pointsTotal();
+    ACHIEVEMENTS.forEach(function (a) { if (!state.ach[a.id] && achValue(a, c) >= a.target) { state.ach[a.id] = now; got.push(a); } });
+    if (!got.length) return;
+    var after = pointsTotal();
+    persist();
+    if (got.length <= 2) got.forEach(function (a) { toast('Achievement: ' + a.title, '+' + a.pts + ' points'); });
+    else toast(got.length + ' achievements unlocked', '+' + (after - before) + ' points');
+    if (levelFor(after).i > levelFor(before).i) toast('Level up: ' + levelFor(after).cur.name, 'You now have ' + fmt(after, 0) + ' points.');
+    if (curTab === 'ach') renderAch();
+    if (curTab === 'lungs') renderLungs();
+    queueSync();
+  } finally { checking = false; }
+}
+function progText(a, v) {
+  var t = Math.min(v, a.target);
+  if (a.kind === 'streak') return durMs(t) + ' of ' + durMs(a.target);
+  if (a.metric === 'money') return '₹' + fmt(t, 0) + ' of ₹' + fmt(a.target, 0);
+  if (a.metric === 'lifemins') return lifeMins(t) + ' of ' + lifeMins(a.target);
+  return fmt(Math.floor(t), 0) + ' of ' + fmt(a.target, 0);
+}
+function renderAch() {
+  var now = Date.now(), c = achCtx(now), tot = pointsTotal(), lv = levelFor(tot);
+  var n = 0; ACHIEVEMENTS.forEach(function (a) { if (state.ach[a.id]) n++; });
+  $('lv-kicker').textContent = 'Level ' + (lv.i + 1) + ' of ' + LEVELS.length;
+  $('h-lvl').textContent = lv.cur.name;
+  $('lv-pts').textContent = fmt(tot, 0);
+  var span = lv.next ? lv.next.pts - lv.cur.pts : 1;
+  $('lv-bar').style.width = (lv.next ? Math.min(100, (tot - lv.cur.pts) / span * 100) : 100) + '%';
+  $('lv-next').textContent = lv.next ? fmt(lv.next.pts - tot, 0) + ' points to ' + lv.next.name + '.' : 'You have reached the top level. Keep breathing easy.';
+  $('lv-brk').innerHTML =
+    '<div><dt>Achievements</dt><dd>' + n + ' of ' + ACHIEVEMENTS.length + '</dd></div>' +
+    '<div><dt>From achievements</dt><dd>' + fmt(achPoints(), 0) + '</dd></div>' +
+    '<div><dt>From lung care</dt><dd>' + fmt(practicePoints(state.practice.log), 0) + '</dd></div>';
+  var got = ACHIEVEMENTS.filter(function (a) { return state.ach[a.id]; }).sort(function (x, y) { return state.ach[y.id] - state.ach[x.id]; }).slice(0, 5);
+  $('a-recent').innerHTML = got.length ? got.map(function (a) {
+    return '<li><span>' + esc(a.title) + ' <span style="color:var(--muted)">' + shortDate(state.ach[a.id]) + '</span></span><b>+' + a.pts + '</b></li>';
+  }).join('') : '<li><span style="color:var(--muted)">Nothing yet. Your first one is close.</span></li>';
+  $('a-count').textContent = n + ' of ' + ACHIEVEMENTS.length + ' unlocked. Each one counts once.';
+  var cats = [], by = {};
+  ACHIEVEMENTS.forEach(function (a) { if (!by[a.cat]) { by[a.cat] = []; cats.push(a.cat); } by[a.cat].push(a); });
+  $('a-list').innerHTML = cats.map(function (cat) {
+    return '<h3 class="grp">' + esc(cat) + '</h3><div class="achgrid">' + by[cat].map(function (a) {
+      var done = state.ach[a.id], v = achValue(a, c);
+      var prog = done ? 'Unlocked ' + shortDate(done) :
+        progText(a, v) + '<div class="track"><span style="width:' + Math.min(100, v / a.target * 100) + '%"></span></div>';
+      return '<div class="ach' + (done ? ' got' : '') + '"><div class="badge">' + (done ? '✓' : a.pts) + '</div><div class="t">' + esc(a.title) +
+        '</div><div class="d">' + esc(a.desc) + ' ' + (done ? '' : '+' + a.pts + ' points.') + '</div><div class="p">' + prog + '</div></div>';
+    }).join('') + '</div>';
+  }).join('');
+}
+
+/* ---- Lung care ---- */
+var PATTERNS = {
+  belly: { n: 'Belly breathing', d: 'Breathe in slowly through your nose so your belly rises, then out slowly through your mouth.', ph: [['Breathe in', 4, 1], ['Breathe out', 6, 0.8]] },
+  pursed: { n: 'Pursed-lip breathing', d: 'Breathe in through your nose, then out for twice as long through pursed lips, as if blowing out a candle.', ph: [['Breathe in', 2, 1], ['Breathe out', 4, 0.8]] },
+  box: { n: 'Box breathing', d: 'Equal parts in, hold, out, hold. Steadies the mind during a craving.', ph: [['Breathe in', 4, 1], ['Hold', 4, 1], ['Breathe out', 4, 0.8], ['Hold', 4, 0.8]] },
+  s478: { n: '4-7-8 breathing', d: 'In for 4, hold for 7, out for 8. Slow and calming. Stop if you feel light-headed.', ph: [['Breathe in', 4, 1], ['Hold', 7, 1], ['Breathe out', 8, 0.8]] }
+};
+var EXERCISES = [
+  { n: 'Brisk walk', m: '20 to 30 minutes', s: ['Walk fast enough that you can talk but not sing.', 'Keep shoulders relaxed and breathe through your nose when you can.', 'Build up from 10 minutes if you are new to exercise.'] },
+  { n: 'Interval walking', m: '20 minutes', s: ['Walk easy for 3 minutes, then brisk for 1 minute.', 'Repeat the cycle five times.', 'Finish with 2 minutes of slow walking and deep breaths.'] },
+  { n: 'Stair climbing', m: '5 to 10 minutes', s: ['Climb at a steady pace, holding the rail.', 'Breathe in rhythm with your steps.', 'Rest at the top until your breathing settles, then repeat.'] },
+  { n: 'Cycling or swimming', m: '20 to 30 minutes', s: ['Keep to a steady, comfortable effort.', 'Swimming rewards controlled breathing: exhale fully underwater.', 'Cool down for 3 minutes at an easy pace.'] },
+  { n: 'Rib-cage expansion', m: '3 minutes', s: ['Sit tall and place your hands on the sides of your ribs.', 'Breathe in and feel the ribs widen into your hands.', 'Breathe out fully and feel them draw in. Repeat for 10 breaths.'] },
+  { n: 'Chest opener stretch', m: '2 minutes', s: ['Stand and clasp your hands behind your back.', 'Straighten your arms and lift them slightly as you open your chest.', 'Breathe slowly for 5 breaths, release, and repeat twice.'] }
+];
+var YOGA_PRANAYAMA = [
+  { n: 'Three-part breath (Dirga)', m: '3 to 5 minutes', s: ['Sit comfortably with a tall spine.', 'Breathe in, filling the belly, then the ribs, then the upper chest.', 'Breathe out in reverse order: chest, ribs, belly.'] },
+  { n: 'Alternate nostril (Anulom Vilom)', m: '3 to 5 minutes', s: ['Close the right nostril with your thumb and breathe in through the left.', 'Close the left with your ring finger, release the right and breathe out.', 'Breathe in through the right, switch, and breathe out through the left. That is one round. Keep it gentle.'] },
+  { n: 'Humming bee (Bhramari)', m: '2 to 3 minutes', s: ['Sit comfortably with your eyes closed.', 'Breathe in through your nose.', 'Breathe out slowly with a soft humming sound. Repeat for 6 to 8 breaths.'] },
+  { n: 'Ocean breath (Ujjayi)', m: '3 minutes', s: ['Slightly narrow the back of your throat, as if fogging a mirror.', 'Breathe in and out through your nose with a soft ocean sound.', 'Keep it smooth and quiet, never forced.'] }
+];
+var YOGA_ASANAS = [
+  { n: 'Cobra (Bhujangasana)', m: '5 breaths', s: ['Lie on your belly with hands under your shoulders.', 'Breathe in and lift your chest, keeping elbows bent and hips down.', 'Hold for 5 breaths and lower slowly.'] },
+  { n: 'Bridge (Setu Bandhasana)', m: '5 breaths', s: ['Lie on your back with knees bent and feet flat.', 'Press your feet down and lift your hips.', 'Hold for 5 breaths and lower slowly.'] },
+  { n: 'Camel (Ustrasana), gentle', m: '3 breaths', s: ['Kneel with knees hip-width apart.', 'Place hands on your lower back and lift your chest.', 'Hold for 3 breaths. Skip this if your neck or back is sensitive.'] },
+  { n: 'Fish (Matsyasana), supported', m: '1 minute', s: ['Lie on your back with a folded blanket under your upper back.', 'Let your chest open and your arms rest at your sides.', 'Breathe slowly into the chest for 10 breaths.'] },
+  { n: 'Mountain (Tadasana)', m: '1 minute', s: ['Stand tall with feet together and arms at your sides.', 'Breathe in and raise your arms overhead.', 'Breathe out and lower them. Repeat 8 times.'] }
+];
+function pracItem(p, cat) {
+  return '<details class="prac"><summary><span class="pn">' + esc(p.n) + '</span><span class="pm">' + esc(p.m) + '</span></summary><ol>' +
+    p.s.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') +
+    '</ol><button type="button" class="btn small" data-log="' + cat + '" data-name="' + esc(p.n) + '">I did this</button></details>';
+}
+function buildPractice() {
+  $('ex-list').innerHTML = EXERCISES.map(function (p) { return pracItem(p, 'exercise'); }).join('');
+  $('yo-list').innerHTML = '<h3 class="grp">Pranayama (breathing)</h3>' + YOGA_PRANAYAMA.map(function (p) { return pracItem(p, 'yoga'); }).join('') +
+    '<h3 class="grp">Asanas (poses)</h3>' + YOGA_ASANAS.map(function (p) { return pracItem(p, 'yoga'); }).join('');
+}
+function logPractice(cat, name) {
+  var before = practicePoints(state.practice.log);
+  state.practice.log.push({ t: Date.now(), c: cat, n: name });
+  if (state.practice.log.length > 400) state.practice.log = state.practice.log.slice(-400);
+  var gain = practicePoints(state.practice.log) - before;
+  persist();
+  toast('Logged: ' + name, gain ? '+' + gain + ' points' : 'Daily point limit reached. Still great for your lungs.');
+  checkAch(); renderLungs(); queueSync();
+}
+function renderLungs() {
+  var log = state.practice.log, now = Date.now(), by = practiceByDay(log);
+  var today = by[dayKey(now)] || 0;
+  $('pr-stats').innerHTML =
+    '<div><dt>Sessions logged</dt><dd>' + log.length + '</dd></div>' +
+    '<div><dt>Today</dt><dd>' + today + ' (' + Math.min(3, today) + ' of 3 scoring)</dd></div>' +
+    '<div><dt>Day streak</dt><dd>' + practiceDayStreak(log, now) + '</dd></div>' +
+    '<div><dt>Points earned</dt><dd>' + practicePoints(log) + '</dd></div>';
+  var h = '';
+  for (var i = 6; i >= 0; i--) {
+    var t = now - i * DAY_MS;
+    h += '<div><i class="' + (by[dayKey(t)] ? 'on' : '') + '"></i>' + new Date(t).toLocaleDateString('en-IN', { weekday: 'narrow' }) + '</div>';
+  }
+  $('pr-dots').innerHTML = h;
+}
+
+var breath = { on: false, timer: null };
+function showBreathDesc() { $('br-desc').textContent = PATTERNS[$('br-pattern').value].d; }
+function stopBreath(done) {
+  if (!breath.on) return;
+  breath.on = false; clearInterval(breath.timer);
+  $('br-go').textContent = 'Start'; $('br-pattern').disabled = false; $('br-len').disabled = false;
+  var orb = $('orb'); orb.style.transition = 'none'; orb.style.transform = '';
+  $('orb-phase').textContent = done ? 'Done' : 'Ready'; $('orb-count').innerHTML = '&nbsp;';
+  $('br-left').textContent = done ? 'Well done. Session logged.' : '';
+  if (done) logPractice('breathing', PATTERNS[$('br-pattern').value].n + ' ' + $('br-len').value + ' min');
+}
+function startBreath() {
+  var pat = PATTERNS[$('br-pattern').value], total = +$('br-len').value * 60, t0 = Date.now(), lastKey = -1;
+  var L = 0; pat.ph.forEach(function (p) { L += p[1]; });
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  breath.on = true; $('br-go').textContent = 'Stop'; $('br-pattern').disabled = true; $('br-len').disabled = true;
+  function tick() {
+    var el = (Date.now() - t0) / 1000;
+    if (el >= total) { stopBreath(true); return; }
+    var pos = el % L, idx = 0, acc = 0;
+    for (; idx < pat.ph.length; idx++) { if (pos < acc + pat.ph[idx][1]) break; acc += pat.ph[idx][1]; }
+    idx = Math.min(idx, pat.ph.length - 1);
+    var key = Math.floor(el / L) * 10 + idx, ph = pat.ph[idx];
+    if (key !== lastKey) {
+      lastKey = key;
+      $('orb-phase').textContent = ph[0];
+      var orb = $('orb');
+      orb.style.transition = reduce ? 'none' : 'transform ' + ph[1] + 's ease-in-out';
+      orb.style.transform = 'scale(' + ph[2] + ')';
+    }
+    $('orb-count').textContent = Math.ceil(acc + ph[1] - pos);
+    var left = Math.ceil(total - el);
+    $('br-left').textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' left';
+  }
+  tick(); breath.timer = setInterval(tick, 200);
+}
+
+/* ---- Squads ---- */
+var CFG = window.LS_CONFIG || null;
+if (CFG) { var lg = document.getElementById('legal'); if (lg) lg.hidden = false; }
+var soProf = null, soSquads = [], soInbox = null, soRows = [], soBoard = { squad: null, by: 'week', chosen: false };
+var soBusy = false, soLast = 0, soNick = '', soCheerFor = null, syncT = null;
+var ERRS = {
+  bad_secret: 'Your profile was not found. Restore it with your backup code.', unknown_member: 'Your profile was not found. Restore it with your backup code.',
+  bad_nickname: 'That name is not allowed.', nickname_taken: 'That name is taken. Try a new one.', busy: 'Squads is busy right now. Try again in a minute.',
+  bad_name: 'That squad name is not allowed.', too_many_squads: 'You can be in up to 5 squads.', no_such_squad: 'No squad with that code.',
+  squad_full: 'That squad is full.', not_in_squad: 'You are not in that squad.', bad_target: 'You cannot cheer that person.', bad_kind: 'That cheer is not available.',
+  already_cheered: 'You already cheered them today. Come back tomorrow.', network: 'Cannot reach Squads right now. Check your connection and try again.'
+};
+var THEMES = { any: 'Everyone', 'new': 'Just started', steady: 'Past a month', fitness: 'Fitness focus' };
+var CHEERS = { keep_going: 'Keep going', proud: 'So proud of you', one_day: 'One day at a time', breathe: 'Breathe through it' };
+function errText(e) { return ERRS[e && e.message] || 'Something went wrong. Please try again.'; }
+function rpc(fn, args) {
+  return fetch(CFG.url + '/rest/v1/rpc/' + fn, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: CFG.key, Authorization: 'Bearer ' + CFG.key },
+    body: JSON.stringify(args)
+  }).then(function (r) {
+    return r.json().then(function (j) {
+      if (!r.ok) throw new Error((j && j.message) || 'error');
+      return j;
+    }, function () { throw new Error('network'); });
+  }, function () { throw new Error('network'); });
+}
+function genSecret() {
+  var a = new Uint8Array(24);
+  (window.crypto || window.msCrypto).getRandomValues(a);
+  return Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+}
+function showMsg(text, ok) { var el = $('so-msg'); el.textContent = text || ''; el.hidden = !text; el.className = 'msg' + (ok ? ' okmsg' : ''); }
+function syncEvents() {
+  var now = Date.now(), keys = Object.keys(state.ach).map(function (k) { return { key: k }; });
+  var ok = {}; ok[dayKey(now)] = 1; ok[dayKey(now - DAY_MS)] = 1;
+  var recent = state.practice.log.filter(function (e) { return ok[dayKey(e.t)]; });
+  practiceKeys(recent).forEach(function (k) { keys.push({ key: k }); });
+  return keys;
+}
+function syncNow(pub) {
+  var s = state.social, sk = state.streak;
+  if (!CFG || !s.secret) return Promise.resolve(null);
+  var el = sk.start ? Date.now() - sk.start : 0;
+  var evs = syncEvents(), chunks = [];
+  for (var i = 0; i < evs.length; i += 40) chunks.push(evs.slice(i, i + 40));
+  if (!chunks.length) chunks.push([]);
+  var res = null;
+  return chunks.reduce(function (p, ch) {
+    return p.then(function () {
+      return rpc('ls_sync', {
+        p_secret: s.secret, p_streak_start: sk.start ? new Date(sk.start).toISOString() : null,
+        p_best_s: Math.floor(Math.max(sk.best || 0, el) / 1000), p_events: ch, p_public: pub === undefined ? null : pub
+      }).then(function (r) { res = r; });
+    });
+  }, Promise.resolve()).then(function () { return res; });
+}
+function queueSync() {
+  if (!CFG || !state.social.secret) return;
+  clearTimeout(syncT);
+  syncT = setTimeout(function () {
+    syncNow().then(function (p) { if (p) { soProf = p; if (curTab === 'social') renderSocialMe(); } }).catch(function () {});
+  }, 1500);
+}
+function renderSocial() {
+  var on = !!CFG, reg = on && !!state.social.secret;
+  $('so-off').hidden = on; $('so-intro').hidden = !(on && !reg);
+  ['so-me', 'so-actions', 'so-board', 'so-inbox'].forEach(function (id) { $(id).hidden = !reg; });
+  if (on && !reg) { if (!soNick) soNick = genNick(); $('so-nick').textContent = soNick; }
+  if (reg) { renderSocialMe(); renderBoard(); if (Date.now() - soLast > 60000) refreshSocial(); }
+}
+function renderSocialMe() {
+  $('so-tools').hidden = !(CFG && CFG.tools);
+  $('m-nick').textContent = state.social.nick || '';
+  $('m-level').textContent = levelFor(pointsTotal()).cur.name;
+  $('m-total').textContent = soProf ? fmt(soProf.tot, 0) : '...';
+  $('m-week').textContent = soProf ? fmt(soProf.wk, 0) : '...';
+  $('m-cheers').textContent = state.social.cheers || 0;
+  $('so-public').checked = !!(soProf && soProf.public_board);
+  $('so-secret').textContent = state.social.secret || '';
+}
+function refreshSocial() {
+  if (soBusy || !CFG || !state.social.secret) return Promise.resolve();
+  soBusy = true;
+  var sec = state.social.secret;
+  return syncNow().then(function (p) {
+    soProf = p;
+    return Promise.all([rpc('ls_my_squads', { p_secret: sec }), rpc('ls_inbox', { p_secret: sec })]);
+  }).then(function (r) {
+    soSquads = r[0]; soInbox = r[1]; state.social.nsq = soSquads.length;
+    if (soBoard.squad && !soSquads.some(function (q) { return q.id === soBoard.squad; })) soBoard.squad = null;
+    if (!soBoard.chosen && soSquads.length) { soBoard.squad = soSquads[0].id; soBoard.chosen = true; }
+    persist(); checkAch();
+    return rpc('ls_leaderboard', { p_secret: sec, p_squad: soBoard.squad, p_by: soBoard.by });
+  }).then(function (rows) {
+    soRows = rows; soLast = Date.now(); showMsg('');
+  }).catch(function (e) { showMsg(errText(e)); }).then(function () {
+    soBusy = false; renderSocialMe(); renderBoard();
+  });
+}
+function loadBoard() {
+  return rpc('ls_leaderboard', { p_secret: state.social.secret, p_squad: soBoard.squad, p_by: soBoard.by })
+    .then(function (rows) { soRows = rows; renderBoard(); }).catch(function (e) { showMsg(errText(e)); });
+}
+function renderBoard() {
+  if (!state.social.secret) return;
+  var chips = '<button type="button" class="chip" data-sq="" aria-pressed="' + (soBoard.squad === null) + '">Public board</button>' +
+    soSquads.map(function (q) { return '<button type="button" class="chip" data-sq="' + esc(q.id) + '" aria-pressed="' + (soBoard.squad === q.id) + '">' + esc(q.name) + '</button>'; }).join('');
+  $('so-chips').innerHTML = chips;
+  document.querySelectorAll('#so-by .chip').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.by === soBoard.by); });
+  $('so-reset').textContent = (soBoard.by === 'week' ? 'Weekly points reset every Monday (IST). ' : 'All-time points. ') +
+    (soBoard.squad === null ? 'The public board shows people who chose to appear on it.' : '');
+  var now = Date.now();
+  var head = '<thead><tr><th class="r">#</th><th>Name</th><th class="r">Streak</th><th class="r">Week</th><th class="r">Total</th><th></th></tr></thead>';
+  var body = soRows.map(function (r) {
+    var st = r.streak_start ? durMs(now - new Date(r.streak_start).getTime()) : '-';
+    var btn = '';
+    if (r.can_cheer) btn = r.cheered ? '<span style="color:var(--muted);font-size:12px">Cheered</span>' : '<button type="button" class="btn small" data-cheer="' + esc(r.id) + '">Cheer</button>';
+    var out = '<tr class="' + (r.me ? 'me' : '') + '"><td class="r">' + r.rk + '</td><td class="nm">' + esc(r.nickname) + (r.me ? '<span class="you">You</span>' : '') +
+      '</td><td class="r">' + st + '</td><td class="r">' + fmt(r.wk, 0) + '</td><td class="r">' + fmt(r.tot, 0) + '</td><td>' + btn + '</td></tr>';
+    if (soCheerFor === r.id && r.can_cheer && !r.cheered) {
+      out += '<tr class="cheerrow"><td colspan="6"><div class="cheerbtns">' + Object.keys(CHEERS).map(function (k) {
+        return '<button type="button" class="btn small" data-kind="' + k + '">' + CHEERS[k] + '</button>';
+      }).join('') + '</div></td></tr>';
+    }
+    return out;
+  }).join('');
+  $('so-table').innerHTML = head + '<tbody>' + (body || '<tr><td colspan="6" style="color:var(--muted)">Nobody here yet.</td></tr>') + '</tbody>';
+  var sq = null; soSquads.forEach(function (q) { if (q.id === soBoard.squad) sq = q; });
+  $('so-sqinfo').innerHTML = sq ?
+    '<div><b>' + esc(sq.name) + '</b> · ' + sq.members + ' member' + (sq.members === 1 ? '' : 's') + ' · ' + esc(THEMES[sq.theme] || '') + ' · ' + (sq.is_open ? 'open' : 'invite only') + '</div>' +
+    '<div>Invite code <span class="code">' + esc(sq.code) + '</span></div><div><button type="button" class="btn small" data-copy="' + esc(sq.code) + '">Copy code</button> ' + (CFG && CFG.tools ? '<button type="button" class="btn small warn" data-leave="' + esc(sq.id) + '">Leave squad</button>' : '') + '</div>' : '';
+  var ib = soInbox;
+  $('so-cheers').innerHTML = ib && ib.recent && ib.recent.length ? ib.recent.map(function (c) {
+    return '<li><span class="t">' + shortDate(c.at) + '</span><span><b>' + esc(c.from) + '</b>: ' + esc(CHEERS[c.kind] || '') + '</span><span></span></li>';
+  }).join('') : '<li style="grid-template-columns:1fr"><span style="color:var(--muted)">No cheers yet. Cheer a squad mate and they may cheer back.</span></li>';
+}
+function copyText(txt, okMsg) {
+  var done = function () { showMsg(okMsg, true); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, function () { window.prompt('Copy this:', txt); });
+  else window.prompt('Copy this:', txt);
+}
+function afterSquadChange(sq) {
+  soBoard.squad = sq.id; soBoard.chosen = true; soLast = 0;
+  showMsg('You are in ' + sq.name + '. Invite code: ' + sq.code, true);
+  return refreshSocial();
+}
+function joinByCode(code) {
+  return rpc('ls_join_squad', { p_secret: state.social.secret, p_code: code }).then(afterSquadChange).catch(function (e) { showMsg(errText(e)); });
+}
+function bindExtra() {
+  buildPractice(); showBreathDesc();
+  $('br-pattern').addEventListener('change', showBreathDesc);
+  $('br-go').addEventListener('click', function () { if (breath.on) stopBreath(false); else startBreath(); });
+  function onLog(e) { var b = e.target.closest('button[data-log]'); if (b) logPractice(b.dataset.log, b.dataset.name); }
+  $('ex-list').addEventListener('click', onLog); $('yo-list').addEventListener('click', onLog);
+
+  $('so-age').addEventListener('change', function () { $('so-join').disabled = !this.checked; });
+  $('so-reroll').addEventListener('click', function () { soNick = genNick(); $('so-nick').textContent = soNick; });
+  $('so-join').addEventListener('click', function () {
+    if (!$('so-age').checked) return;
+    var secret = genSecret(), nick = soNick || genNick(), tries = 0, pub = $('so-public-new').checked;
+    this.disabled = true; var btn = this;
+    function go() {
+      return rpc('ls_register', { p_secret: secret, p_nickname: nick }).catch(function (e) {
+        if (e.message === 'nickname_taken' && tries++ < 6) { nick = genNick(); return go(); }
+        throw e;
+      });
+    }
+    go().then(function (p) {
+      state.social.secret = secret; state.social.id = p.id; state.social.nick = p.nickname; persist();
+      return syncNow(pub);
+    }).then(function (p) { soProf = p; soLast = 0; showMsg('Welcome, ' + state.social.nick + '.', true); renderSocial(); })
+      .catch(function (e) { showMsg(errText(e)); }).then(function () { btn.disabled = false; });
+  });
+  $('so-public').addEventListener('change', function () {
+    var v = this.checked;
+    syncNow(v).then(function (p) { soProf = p; showMsg(v ? 'You now appear on the public board.' : 'You are hidden from the public board.', true); loadBoard(); })
+      .catch(function (e) { showMsg(errText(e)); });
+  });
+  $('so-copy-secret').addEventListener('click', function () { copyText(state.social.secret, 'Backup code copied. Keep it private.'); });
+  $('so-restore-go').addEventListener('click', function () {
+    var sec = $('so-restore').value.trim();
+    rpc('ls_profile', { p_secret: sec }).then(function (p) {
+      state.social.secret = sec; state.social.id = p.id; state.social.nick = p.nickname; persist();
+      soLast = 0; soBoard = { squad: null, by: 'week', chosen: false }; $('so-restore').value = '';
+      showMsg('Profile restored.', true); renderSocial();
+    }).catch(function (e) { showMsg(errText(e)); });
+  });
+  $('so-export').addEventListener('click', function () {
+    rpc('ls_export_me', { p_secret: state.social.secret }).then(function (d) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' }));
+      a.download = 'last-stick-squads-data.json'; document.body.appendChild(a); a.click(); a.remove();
+    }).catch(function (e) { showMsg(errText(e)); });
+  });
+  $('so-delete').addEventListener('click', function () {
+    if (!window.confirm('Delete your Squads profile, points and cheers from the server? This cannot be undone. Your streak and achievements on this device stay.')) return;
+    rpc('ls_delete_me', { p_secret: state.social.secret }).then(function () {
+      state.social = { secret: null, id: null, nick: null, sent: {}, cheers: 0, nsq: 0 }; persist();
+      soProf = null; soSquads = []; soRows = []; soInbox = null; soLast = 0; soBoard = { squad: null, by: 'week', chosen: false }; soNick = '';
+      showMsg('Your Squads profile was deleted.', true); renderSocial();
+    }).catch(function (e) { showMsg(errText(e)); });
+  });
+  $('so-sqinfo').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-leave]'); if (!b || !window.confirm('Leave this squad?')) return;
+    rpc('ls_leave_squad', { p_secret: state.social.secret, p_squad: b.dataset.leave }).then(function () { soBoard = { squad: null, by: soBoard.by, chosen: true }; soLast = 0; return refreshSocial(); })
+      .catch(function (err) { showMsg(errText(err)); });
+  });
+  $('so-code').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
+  $('so-codego').addEventListener('click', function () { var c = $('so-code').value.trim(); if (c) { $('so-code').value = ''; joinByCode(c); } });
+  $('so-create').addEventListener('click', function () {
+    rpc('ls_create_squad', { p_secret: state.social.secret, p_name: genSquad(), p_theme: $('so-theme').value, p_open: $('so-open').checked })
+      .then(afterSquadChange).catch(function (e) { showMsg(errText(e)); });
+  });
+  $('so-browse').addEventListener('click', function () {
+    rpc('ls_open_squads', { p_secret: state.social.secret }).then(function (rows) {
+      $('so-open-list').innerHTML = rows.length ? rows.map(function (q) {
+        return '<div class="openitem"><div>' + esc(q.name) + '<small>' + esc(THEMES[q.theme] || '') + ' · ' + q.n + ' member' + (q.n === 1 ? '' : 's') + '</small></div><button type="button" class="btn small" data-code="' + esc(q.code) + '">Join</button></div>';
+      }).join('') : '<p class="hint">No open squads right now. Start one!</p>';
+    }).catch(function (e) { showMsg(errText(e)); });
+  });
+  $('so-open-list').addEventListener('click', function (e) { var b = e.target.closest('button[data-code]'); if (b) { $('so-open-list').innerHTML = ''; joinByCode(b.dataset.code); } });
+  $('so-chips').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return;
+    soBoard.squad = b.dataset.sq || null; soBoard.chosen = true; soCheerFor = null; loadBoard();
+  });
+  $('so-by').addEventListener('click', function (e) { var b = e.target.closest('.chip'); if (!b) return; soBoard.by = b.dataset.by; loadBoard(); });
+  $('so-sqinfo').addEventListener('click', function (e) { var b = e.target.closest('button[data-copy]'); if (b) copyText(b.dataset.copy, 'Squad code copied.'); });
+  $('so-table').addEventListener('click', function (e) {
+    var c = e.target.closest('button[data-cheer]');
+    if (c) { soCheerFor = soCheerFor === c.dataset.cheer ? null : c.dataset.cheer; renderBoard(); return; }
+    var k = e.target.closest('button[data-kind]');
+    if (k && soCheerFor) {
+      var to = soCheerFor; soCheerFor = null;
+      rpc('ls_cheer', { p_secret: state.social.secret, p_to: to, p_kind: k.dataset.kind }).then(function () {
+        state.social.cheers = (state.social.cheers || 0) + 1; persist(); checkAch();
+        showMsg('Cheer sent.', true); syncNow().then(function (p) { soProf = p; renderSocialMe(); }).catch(function () {}); return loadBoard();
+      }).catch(function (err) { showMsg(errText(err)); loadBoard(); });
+    }
+  });
+  setInterval(function () { if (curTab === 'social' && !document.hidden && state.social.secret && Date.now() - soLast > 300000) refreshSocial(); }, 30000);
+}
+
+function clampProfile() {
+  var p = state.p;
+  p.age = Math.min(100, Math.max(14, +p.age || 30));
+  p.start = Math.min(p.age, Math.max(8, +p.start || 18));
+  p.life = Math.min(110, Math.max(40, +p.life || 71));
+  p.price = Math.max(0, +p.price || 0);
+}
+
+var TABS = ['calc', 'streak', 'ach', 'lungs', 'social'];
+function setTab(t) {
+  if (TABS.indexOf(t) < 0) t = 'calc';
+  if (t !== 'lungs') stopBreath(false);
+  curTab = t;
+  TABS.forEach(function (k) {
+    $('view-' + k).hidden = k !== t;
+    $('tab-' + k).setAttribute('aria-selected', k === t);
+  });
+  try { localStorage.setItem(TABKEY, t); } catch (e) {}
+  if (t === 'streak') renderStreak();
+  if (t === 'ach') renderAch();
+  if (t === 'lungs') renderLungs();
+  if (t === 'social') renderSocial();
+}
+
+function afterCalcChange() { touch(); persist(); renderResults(); if (curTab === 'streak') renderStreak(); checkAch(); }
+
+function bind() {
+  ['age', 'start', 'life', 'price'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      state.p[id] = this.value === '' ? '' : +this.value;
+      if (id === 'life') state.p.lifeEdited = true;
+      clampProfile(); afterCalcChange();
+    });
+  });
+  $('sex').addEventListener('change', function () {
+    state.p.sex = this.value;
+    if (!state.p.lifeEdited) { state.p.life = BASE_LIFE[this.value]; $('life').value = state.p.life; }
+    afterCalcChange();
+  });
+  document.querySelectorAll('input[name="depth"]').forEach(function (r) {
+    r.addEventListener('change', function () { state.p.depth = +this.value; afterCalcChange(); });
+  });
+  $('add').addEventListener('click', function () {
+    state.rows.push({ brand: 'classic-regular', count: 1 }); renderRows(); afterCalcChange();
+  });
+  var rows = $('rows');
+  rows.addEventListener('input', function (e) {
+    var t = e.target, row = t.closest('.row'); if (!row) return;
+    var r = state.rows[+row.dataset.i], k = t.dataset.k;
+    if (k === 'count') r.count = t.value === '' ? 0 : Math.min(99, Math.max(0, Math.floor(+t.value)));
+    else if (k && k.indexOf('c-') === 0) { r.custom = r.custom || { tar: 10, nic: 0.8, co: 10 }; r.custom[k.slice(2)] = +t.value; }
+    afterCalcChange();
+  });
+  rows.addEventListener('change', function (e) {
+    var t = e.target; if (t.dataset.k !== 'brand') return;
+    var r = state.rows[+t.closest('.row').dataset.i]; r.brand = t.value;
+    if (t.value === 'custom' && !r.custom) r.custom = { tar: 10, nic: 0.8, co: 10 };
+    renderRows(); afterCalcChange();
+  });
+  rows.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-a]'); if (!b) return;
+    var i = +b.closest('.row').dataset.i, r = state.rows[i];
+    if (b.dataset.a === 'inc') r.count = Math.min(99, (+r.count || 0) + 1);
+    if (b.dataset.a === 'dec') r.count = Math.max(0, (+r.count || 0) - 1);
+    if (b.dataset.a === 'del') { state.rows.splice(i, 1); if (!state.rows.length) state.rows.push({ brand: 'classic-regular', count: 0 }); }
+    renderRows(); afterCalcChange();
+  });
+
+  TABS.forEach(function (k) { $('tab-' + k).addEventListener('click', function () { setTab(k); }); });
+  bindExtra();
+  $('s-start').addEventListener('click', startStreak);
+  $('s-slip').addEventListener('click', function () { this.hidden = true; $('s-confirm').hidden = false; $('s-no').focus(); });
+  $('s-no').addEventListener('click', function () { $('s-confirm').hidden = true; $('s-slip').hidden = false; });
+  $('s-yes').addEventListener('click', endStreak);
+  $('s-rebase').addEventListener('click', function () { state.streak.base = currentBase(); persist(); renderStreak(); });
+  setInterval(function () {
+    if (state.streak.start && !document.hidden) { checkAch(); if (curTab === 'streak') renderStreak(); }
+  }, 1000);
+}
+
+function applyAll() {
+  clampProfile();
+  var p = state.p;
+  $('age').value = p.age; $('start').value = p.start; $('sex').value = p.sex; $('life').value = p.life; $('price').value = p.price;
+  document.querySelectorAll('input[name="depth"]').forEach(function (r) { r.checked = (+r.value === +p.depth); });
+  $('example').hidden = !!state.touched;
+  renderRows(); renderResults(); renderStreak(); renderAch(); renderLungs(); checkAch();
+}
+
+function init() {
+  load();
+  bind();
+  applyAll();
+  var t = 'calc';
+  try { t = localStorage.getItem(TABKEY) || 'calc'; } catch (e) {}
+  setTab(TABS.indexOf(t) >= 0 ? t : 'calc');
+  checkAch();
+  initStore();
+}
+init();
+</script>
