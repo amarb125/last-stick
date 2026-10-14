@@ -40,7 +40,7 @@ with sync_playwright() as p:
     assert not pg.is_visible('#so-tools'), 'delete/export stay hidden until the backend functions exist'
     assert 'WiseYak91' in pg.inner_text('#so-table')
     pg.click('button[data-cheer=u2]'); pg.click('button[data-kind=proud]')
-    pg.wait_for_function("document.getElementById('so-msg').textContent.indexOf('Cheer sent')>=0")
+    pg.wait_for_selector('#so-msg:has-text("Cheer sent")')
     assert pg.is_visible('#legal'), 'legal links show in the web app'
     pg.click('#tab-lungs'); pg.click('#br-go'); pg.wait_for_timeout(600)
     assert 'BREATHE IN' in pg.inner_text('#orb-phase').upper(); pg.click('#br-go')
